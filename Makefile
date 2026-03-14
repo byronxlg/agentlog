@@ -5,10 +5,10 @@ BINDIR := bin
 build: $(BINDIR)/agentlog $(BINDIR)/agentlogd
 
 $(BINDIR)/agentlog:
-	go build -o $(BINDIR)/agentlog ./cmd/agentlog
+	CGO_ENABLED=0 go build -o $(BINDIR)/agentlog ./cmd/agentlog
 
 $(BINDIR)/agentlogd:
-	go build -o $(BINDIR)/agentlogd ./cmd/agentlogd
+	CGO_ENABLED=0 go build -o $(BINDIR)/agentlogd ./cmd/agentlogd
 
 test:
 	go test ./...
