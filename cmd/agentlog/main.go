@@ -23,6 +23,7 @@ func usage() {
 	fmt.Fprintln(os.Stderr, "Commands:")
 	fmt.Fprintln(os.Stderr, "  start    Start the agentlogd daemon")
 	fmt.Fprintln(os.Stderr, "  stop     Stop the agentlogd daemon")
+	fmt.Fprintln(os.Stderr, "  query    Full-text search across decision entries")
 }
 
 func main() {
@@ -46,6 +47,13 @@ func main() {
 		err = cli.Start(dir)
 	case "stop":
 		err = cli.Stop(dir)
+	case "query":
+		cfg, parseErr := cli.ParseQueryArgs(args[1:])
+		if parseErr != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", parseErr)
+			os.Exit(1)
+		}
+		os.Exit(cli.RunQuery(cfg))
 	default:
 		fmt.Fprintf(os.Stderr, "agentlog: unknown command %q\n", args[0])
 		usage()
