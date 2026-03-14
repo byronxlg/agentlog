@@ -21,9 +21,10 @@ func usage() {
 	fmt.Fprintln(os.Stderr, "Usage: agentlog [--dir <path>] <command>")
 	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintln(os.Stderr, "Commands:")
-	fmt.Fprintln(os.Stderr, "  start    Start the agentlogd daemon")
-	fmt.Fprintln(os.Stderr, "  stop     Stop the agentlogd daemon")
-	fmt.Fprintln(os.Stderr, "  query    Full-text search across decision entries")
+	fmt.Fprintln(os.Stderr, "  start         Start the agentlogd daemon")
+	fmt.Fprintln(os.Stderr, "  stop          Stop the agentlogd daemon")
+	fmt.Fprintln(os.Stderr, "  query         Full-text search across decision entries")
+	fmt.Fprintln(os.Stderr, "  blame <file>  Show decisions referencing a file")
 }
 
 func main() {
@@ -54,6 +55,24 @@ func main() {
 			os.Exit(1)
 		}
 		os.Exit(cli.RunQuery(cfg))
+	case "blame":
+		if len(args) < 2 {
+			fmt.Fprintln(os.Stderr, "Usage: agentlog blame [--verbose] <file>")
+			os.Exit(1)
+		}
+		opts := cli.BlameOptions{Dir: dir}
+		for _, a := range args[1:] {
+			if a == "--verbose" {
+				opts.Verbose = true
+			} else {
+				opts.File = a
+			}
+		}
+		if opts.File == "" {
+			fmt.Fprintln(os.Stderr, "Usage: agentlog blame [--verbose] <file>")
+			os.Exit(1)
+		}
+		err = cli.Blame(opts)
 	default:
 		fmt.Fprintf(os.Stderr, "agentlog: unknown command %q\n", args[0])
 		usage()
