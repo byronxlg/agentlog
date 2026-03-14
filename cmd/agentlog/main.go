@@ -1,3 +1,4 @@
+// Package main implements the agentlog CLI.
 package main
 
 import (

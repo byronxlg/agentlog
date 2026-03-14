@@ -1,3 +1,4 @@
+// Package main implements the agentlogd daemon.
 package main
 
 import (
