@@ -1,0 +1,16 @@
+# agentlog configuration
+# Default values are shown below. Uncomment and modify as needed.
+
+# Base directory for all agentlog data (logs, index, socket, PID file).
+# store_dir = "~/.agentlog"
+
+# Unix socket path for daemon communication.
+# Relative paths are resolved from store_dir.
+# socket = "agentlogd.sock"
+
+# Log file for daemon output.
+# Relative paths are resolved from store_dir.
+# log_file = "agentlogd.log"
+
+# Maximum number of entries returned by a query when no limit is specified.
+# default_query_limit = 50
