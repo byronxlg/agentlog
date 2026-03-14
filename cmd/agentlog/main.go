@@ -23,6 +23,7 @@ func usage() {
 	fmt.Fprintln(os.Stderr, "Commands:")
 	fmt.Fprintln(os.Stderr, "  start         Start the agentlogd daemon")
 	fmt.Fprintln(os.Stderr, "  stop          Stop the agentlogd daemon")
+	fmt.Fprintln(os.Stderr, "  write         Write a decision entry to the log")
 	fmt.Fprintln(os.Stderr, "  query         Full-text search across decision entries")
 	fmt.Fprintln(os.Stderr, "  blame <file>  Show decisions referencing a file")
 }
@@ -48,6 +49,13 @@ func main() {
 		err = cli.Start(dir)
 	case "stop":
 		err = cli.Stop(dir)
+	case "write":
+		opts, parseErr := cli.ParseWriteArgs(dir, args[1:])
+		if parseErr != nil {
+			fmt.Fprintf(os.Stderr, "agentlog write: %s\n", parseErr)
+			os.Exit(1)
+		}
+		err = cli.Write(opts)
 	case "query":
 		cfg, parseErr := cli.ParseQueryArgs(args[1:])
 		if parseErr != nil {
