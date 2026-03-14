@@ -1,3 +1,5 @@
+version: "2"
+
 linters:
   enable:
     - errcheck
@@ -5,28 +7,24 @@ linters:
     - ineffassign
     - staticcheck
     - unused
-    - gosimple
     - gocritic
     - revive
     - misspell
+  settings:
+    revive:
+      rules:
+        - name: exported
+        - name: var-naming
+        - name: blank-imports
+        - name: context-as-argument
+        - name: error-return
+        - name: error-strings
+        - name: increment-decrement
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - style
+
+formatters:
+  enable:
     - gofmt
-
-linters-settings:
-  revive:
-    rules:
-      - name: exported
-      - name: var-naming
-      - name: blank-imports
-      - name: context-as-argument
-      - name: error-return
-      - name: error-strings
-      - name: increment-decrement
-  gocritic:
-    enabled-tags:
-      - diagnostic
-      - style
-
-issues:
-  exclude-use-default: false
-  max-issues-per-linter: 0
-  max-same-issues: 0
