@@ -10,27 +10,25 @@ linters:
     - gocritic
     - revive
     - misspell
+  settings:
+    revive:
+      rules:
+        - name: exported
+        - name: var-naming
+        - name: blank-imports
+        - name: context-as-argument
+        - name: error-return
+        - name: error-strings
+        - name: increment-decrement
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - style
 
 formatters:
   enable:
     - gofmt
 
-linters-settings:
-  revive:
-    rules:
-      - name: exported
-      - name: var-naming
-      - name: blank-imports
-      - name: context-as-argument
-      - name: error-return
-      - name: error-strings
-      - name: increment-decrement
-  gocritic:
-    enabled-tags:
-      - diagnostic
-      - style
-
-issues:
-  exclude-use-default: false
+output:
   max-issues-per-linter: 0
   max-same-issues: 0
