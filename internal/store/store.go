@@ -67,13 +67,13 @@ func (s *Store) Append(entry Entry) error {
 	if err != nil {
 		return fmt.Errorf("open session file: %w", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	// File-level lock to prevent corruption from other processes.
 	if err := lockFile(f); err != nil {
 		return fmt.Errorf("lock session file: %w", err)
 	}
-	defer unlockFile(f)
+	defer func() { _ = unlockFile(f) }()
 
 	data = append(data, '\n')
 	if _, err := f.Write(data); err != nil {
@@ -129,7 +129,7 @@ func readEntriesFromFile(path string) ([]Entry, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	var entries []Entry
 	scanner := bufio.NewScanner(f)

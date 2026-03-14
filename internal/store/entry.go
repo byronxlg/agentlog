@@ -9,6 +9,7 @@ import (
 // EntryType represents the kind of decision being logged.
 type EntryType string
 
+// Entry type constants for the five supported decision log entry types.
 const (
 	EntryTypeDecision      EntryType = "decision"
 	EntryTypeAttemptFailed EntryType = "attempt_failed"
