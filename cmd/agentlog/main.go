@@ -4,9 +4,56 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
+
+	"github.com/byronxlg/agentlog/internal/cli"
 )
 
+func defaultDir() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ".agentlog"
+	}
+	return filepath.Join(home, ".agentlog")
+}
+
+func usage() {
+	fmt.Fprintln(os.Stderr, "Usage: agentlog [--dir <path>] <command>")
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, "Commands:")
+	fmt.Fprintln(os.Stderr, "  start    Start the agentlogd daemon")
+	fmt.Fprintln(os.Stderr, "  stop     Stop the agentlogd daemon")
+}
+
 func main() {
-	fmt.Fprintln(os.Stderr, "agentlog: not yet implemented")
-	os.Exit(1)
+	args := os.Args[1:]
+	dir := defaultDir()
+
+	// Parse --dir flag
+	if len(args) >= 2 && args[0] == "--dir" {
+		dir = args[1]
+		args = args[2:]
+	}
+
+	if len(args) < 1 {
+		usage()
+		os.Exit(1)
+	}
+
+	var err error
+	switch args[0] {
+	case "start":
+		err = cli.Start(dir)
+	case "stop":
+		err = cli.Stop(dir)
+	default:
+		fmt.Fprintf(os.Stderr, "agentlog: unknown command %q\n", args[0])
+		usage()
+		os.Exit(1)
+	}
+
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "agentlog %s: %s\n", args[0], err)
+		os.Exit(1)
+	}
 }
