@@ -96,19 +96,15 @@ pip install agentlog
 ```
 
 ```python
-from agentlog import AgentLog
+import agentlog
 
-log = AgentLog()
-session = log.create_session()
-
-session.decision(
-    title="Use batch inserts for rebuild",
+agentlog.write("decision", "Use batch inserts for rebuild",
     body="10x faster for 10k+ entries",
     tags=["performance"],
     files=["internal/index/rebuild.go"],
 )
 
-entries = log.query(type="decision", since="1h")
+entries = agentlog.query("rebuild", type="decision")
 ```
 
 See [sdk/python/README.md](sdk/python/README.md) for the full SDK documentation.
