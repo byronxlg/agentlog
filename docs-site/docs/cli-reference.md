@@ -1,0 +1,187 @@
+# CLI Reference
+
+All commands accept the `--dir <path>` global flag to override the data directory (default: `~/.agentlog`).
+
+```
+agentlog [--dir <path>] <command>
+```
+
+## Commands
+
+### `agentlog start`
+
+Start the agentlogd daemon as a background process. The daemon listens on a Unix socket and manages all reads and writes.
+
+```bash
+agentlog start
+```
+
+If the daemon is already running, the command exits with an error showing the existing PID. Stale PID files from crashed daemons are cleaned up automatically.
+
+### `agentlog stop`
+
+Stop the running agentlogd daemon by sending SIGTERM and waiting for it to exit (up to 5 seconds).
+
+```bash
+agentlog stop
+```
+
+### `agentlog write`
+
+Write a decision entry to the log. Requires `--type` and `--title`.
+
+```bash
+agentlog write --type <type> --title <title> [flags]
+```
+
+**Flags:**
+
+| Flag | Required | Description |
+|------|----------|-------------|
+| `--type` | Yes | Entry type (see [Entry types](#entry-types) below) |
+| `--title` | Yes | Short description of the decision |
+| `--body` | No | Longer explanation with reasoning and context |
+| `--tags` | No | Comma-separated tags (e.g. `"performance,sqlite"`) |
+| `--files` | No | Comma-separated file paths affected by this decision |
+| `--session` | No | Session ID to append to. If omitted, a new session is created |
+
+**Example:**
+
+```bash
+agentlog write --type decision \
+  --title "Use batch inserts for index rebuild" \
+  --body "Batch is 10x faster for rebuild of 10k+ entries. Trade-off: more complex transaction handling." \
+  --tags "performance,sqlite" \
+  --files "internal/index/rebuild.go"
+```
+
+On success, prints the entry ID.
+
+### `agentlog log`
+
+List entries with optional filters. Results are sorted newest-first.
+
+```bash
+agentlog log [flags]
+```
+
+**Flags:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--type` | | Filter by entry type |
+| `--session` | | Filter by session ID |
+| `--tag` | | Filter by tag |
+| `--since` | | Show entries after this time (RFC 3339 or relative: `1h`, `7d`, `30m`) |
+| `--until` | | Show entries before this time (RFC 3339 or relative: `1h`, `7d`, `30m`) |
+| `--file` | | Filter by referenced file path |
+| `--verbose` | `false` | Show entry body text inline |
+| `--limit` | `50` | Maximum number of entries to display |
+| `--offset` | `0` | Number of entries to skip (for pagination) |
+
+**Examples:**
+
+```bash
+# Recent decisions
+agentlog log --type decision
+
+# Entries from the last hour
+agentlog log --since 1h
+
+# Entries tagged "infrastructure" with body text
+agentlog log --tag infrastructure --verbose
+
+# Paginate: skip first 50, show next 50
+agentlog log --offset 50 --limit 50
+```
+
+### `agentlog query`
+
+Full-text search across entry titles and bodies. Accepts the same filter flags as `log`. Results are displayed with matching text highlighted.
+
+```bash
+agentlog query [flags] <search_term>
+```
+
+**Flags:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--type` | | Filter by entry type |
+| `--session` | | Filter by session ID |
+| `--tag` | | Filter by tag |
+| `--since` | | Show entries after this time (RFC 3339 or relative: `1h`, `7d`, `30m`) |
+| `--until` | | Show entries before this time (RFC 3339 or relative: `1h`, `7d`, `30m`) |
+| `--file` | | Filter by file reference |
+| `--limit` | `20` | Maximum number of results |
+| `--socket` | | Override daemon socket path |
+
+**Examples:**
+
+```bash
+agentlog query "sqlite performance"
+agentlog query "database" --type decision --limit 5
+agentlog query "migration" --since 7d
+```
+
+### `agentlog show`
+
+Show all entries in a session, sorted chronologically. Supports prefix matching on session IDs.
+
+```bash
+agentlog show <session_id>
+```
+
+**Example:**
+
+```bash
+# Full session ID
+agentlog show a1b2c3d4-e5f6-7890-abcd-ef1234567890
+
+# Prefix match
+agentlog show a1b2c3
+```
+
+If the prefix matches multiple sessions, the command lists the ambiguous matches and exits with an error.
+
+### `agentlog blame`
+
+Show all decisions referencing a given file path. Results are sorted newest-first.
+
+```bash
+agentlog blame [--verbose] <file>
+```
+
+**Flags:**
+
+| Flag | Description |
+|------|-------------|
+| `--verbose` | Show entry body text inline |
+
+**Example:**
+
+```bash
+agentlog blame internal/index/index.go
+agentlog blame --verbose src/main.go
+```
+
+## Entry types
+
+Each entry has a type that describes the kind of decision being logged:
+
+| Type | Use when |
+|------|----------|
+| `decision` | Choosing between alternatives |
+| `attempt_failed` | Something you tried that did not work |
+| `deferred` | Work you chose to skip or postpone |
+| `assumption` | An assumption that could be wrong |
+| `question` | An open question you cannot answer from context |
+
+## Time formats
+
+The `--since` and `--until` flags accept two formats:
+
+- **Relative durations**: a number followed by a unit - `m` (minutes), `h` (hours), `d` (days). Examples: `30m`, `1h`, `7d`.
+- **Absolute timestamps**: RFC 3339 format. Example: `2026-03-15T10:30:00Z`.
+
+Relative durations are subtracted from the current time. For example, `--since 1h` means "entries from the last hour".

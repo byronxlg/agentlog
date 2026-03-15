@@ -29,6 +29,9 @@ __pycache__/
 .pytest_cache/
 dist/
 
+# MkDocs build output
+docs-site/site/
+
 # agentlog data (local runtime state)
 *.pid
 *.sock
