@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net"
 	"path/filepath"
 	"testing"
@@ -99,6 +100,74 @@ func TestCreateSessionViaProtocol(t *testing.T) {
 	}
 	if result["session_id"] == "" {
 		t.Fatal("expected non-empty session_id")
+	}
+}
+
+func TestHandleQuery_NoFilter(t *testing.T) {
+	d := newTestDaemon(t)
+	defer func() { _ = d.index.Close() }()
+
+	// Create session and write entries.
+	sessionID := d.createSession()
+	for i := 0; i < 3; i++ {
+		entry := store.Entry{
+			ID:        fmt.Sprintf("e%d", i+1),
+			Timestamp: time.Date(2026, 1, 15, i, 0, 0, 0, time.UTC),
+			SessionID: sessionID,
+			Type:      store.EntryTypeDecision,
+			Title:     fmt.Sprintf("Decision %d", i+1),
+		}
+		if err := d.store.Append(entry); err != nil {
+			t.Fatalf("append: %v", err)
+		}
+		if err := d.index.Insert(entry); err != nil {
+			t.Fatalf("insert index: %v", err)
+		}
+	}
+
+	// Query with no filters should return entries.
+	params, _ := json.Marshal(QueryParams{})
+	resp := d.handleRequest(Request{Method: "query", Params: params})
+	if !resp.OK {
+		t.Fatalf("no-filter query failed: %s", resp.Error)
+	}
+
+	var entries []store.Entry
+	if err := json.Unmarshal(resp.Result, &entries); err != nil {
+		t.Fatalf("unmarshal entries: %v", err)
+	}
+	if len(entries) != 3 {
+		t.Fatalf("expected 3 entries, got %d", len(entries))
+	}
+	// Should be ordered most recent first.
+	if entries[0].ID != "e3" {
+		t.Errorf("expected most recent first (e3), got %q", entries[0].ID)
+	}
+
+	// With limit.
+	params, _ = json.Marshal(QueryParams{Limit: 2})
+	resp = d.handleRequest(Request{Method: "query", Params: params})
+	if !resp.OK {
+		t.Fatalf("limited query failed: %s", resp.Error)
+	}
+	if err := json.Unmarshal(resp.Result, &entries); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if len(entries) != 2 {
+		t.Fatalf("expected 2 entries with limit, got %d", len(entries))
+	}
+
+	// With offset.
+	params, _ = json.Marshal(QueryParams{Limit: 2, Offset: 2})
+	resp = d.handleRequest(Request{Method: "query", Params: params})
+	if !resp.OK {
+		t.Fatalf("offset query failed: %s", resp.Error)
+	}
+	if err := json.Unmarshal(resp.Result, &entries); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("expected 1 entry with offset, got %d", len(entries))
 	}
 }
 

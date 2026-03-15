@@ -116,7 +116,15 @@ func (d *Daemon) handleQuery(params json.RawMessage) Response {
 	case p.FilePath != "":
 		entries, err = d.index.QueryByFilePath(p.FilePath)
 	default:
-		return errResponse("query requires at least one filter parameter")
+		limit := p.Limit
+		if limit <= 0 {
+			limit = 50
+		}
+		offset := p.Offset
+		if offset < 0 {
+			offset = 0
+		}
+		entries, err = d.index.QueryRecent(limit, offset)
 	}
 
 	if err != nil {

@@ -98,6 +98,19 @@ func (idx *Index) QueryByFilePath(filePath string) ([]store.Entry, error) {
 	return idx.scanEntries(rows)
 }
 
+// QueryRecent returns the most recent entries, ordered by timestamp descending.
+func (idx *Index) QueryRecent(limit, offset int) ([]store.Entry, error) {
+	rows, err := idx.db.Query(
+		`SELECT id, timestamp, session_id, type, title, body FROM entries ORDER BY timestamp DESC LIMIT ? OFFSET ?`,
+		limit, offset,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("query recent: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	return idx.scanEntries(rows)
+}
+
 // Search performs a full-text search across title and body using FTS5.
 func (idx *Index) Search(query string) ([]store.Entry, error) {
 	rows, err := idx.db.Query(

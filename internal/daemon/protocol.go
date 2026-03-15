@@ -40,6 +40,8 @@ type QueryParams struct {
 	FilePath  string   `json:"file_path,omitempty"`
 	Start     string   `json:"start,omitempty"`
 	End       string   `json:"end,omitempty"`
+	Limit     int      `json:"limit,omitempty"`
+	Offset    int      `json:"offset,omitempty"`
 }
 
 // SearchParams holds the parameters for a "search" request.
