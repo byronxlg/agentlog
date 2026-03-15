@@ -17,7 +17,27 @@ Git tells you *what* changed. LLM traces tell you *what was said*. Neither tells
 
 ## Installation
 
-Build from source (requires Go 1.23+):
+### Homebrew (macOS/Linux)
+
+```bash
+brew install byronxlg/agentlog/agentlog
+```
+
+### Python SDK
+
+```bash
+pip install agentlog-sdk
+```
+
+### TypeScript SDK
+
+```bash
+npm install agentlog-sdk
+```
+
+### Build from source
+
+Requires Go 1.23+:
 
 ```bash
 git clone https://github.com/byronxlg/agentlog.git
@@ -122,7 +142,29 @@ See [docs/claude-code.md](docs/claude-code.md) for the full integration guide an
 
 ## TypeScript SDK
 
-Coming soon.
+Install the TypeScript SDK for programmatic access:
+
+```bash
+npm install agentlog-sdk
+```
+
+```typescript
+import { AgentlogClient } from "agentlog-sdk";
+
+const client = new AgentlogClient();
+
+await client.write({
+  type: "decision",
+  title: "Use batch inserts for rebuild",
+  body: "10x faster for 10k+ entries",
+  tags: ["performance"],
+  files: ["internal/index/rebuild.go"],
+});
+
+const entries = await client.query({ text: "rebuild" });
+```
+
+See [sdk/typescript/README.md](sdk/typescript/README.md) for the full SDK documentation.
 
 ## Architecture
 
