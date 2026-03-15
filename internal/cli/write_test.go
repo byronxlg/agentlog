@@ -1,7 +1,16 @@
 package cli
 
 import (
+	"bytes"
+	"context"
+	"net"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
+	"time"
+
+	"github.com/byronxlg/agentlog/internal/daemon"
 )
 
 func TestParseWriteArgs_AllFlags(t *testing.T) {
@@ -152,5 +161,135 @@ func TestSplitCSV_SingleValue(t *testing.T) {
 	got := splitCSV("solo")
 	if len(got) != 1 || got[0] != "solo" {
 		t.Fatalf("got %v, want [solo]", got)
+	}
+}
+
+// shortTempDir creates a temp directory with a short path to stay under
+// macOS's 104-byte Unix socket path limit.
+func shortTempDir(t *testing.T) string {
+	t.Helper()
+	dir, err := os.MkdirTemp("", "al")
+	if err != nil {
+		t.Fatalf("create temp dir: %v", err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(dir) })
+	return dir
+}
+
+// startTestDaemon creates and starts a daemon in the given directory.
+// The socket is placed at agentlogd.sock to match the CLI's expectation.
+// Returns a cancel function to shut down the daemon.
+func startTestDaemon(t *testing.T, dir string) context.CancelFunc {
+	t.Helper()
+	socketPath := filepath.Join(dir, "agentlogd.sock")
+	cfg := daemon.Config{
+		Dir:        dir,
+		SocketPath: socketPath,
+		PIDPath:    filepath.Join(dir, "test.pid"),
+		LogPath:    filepath.Join(dir, "test.log"),
+	}
+	d, err := daemon.New(cfg)
+	if err != nil {
+		t.Fatalf("create daemon: %v", err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	errCh := make(chan error, 1)
+	go func() { errCh <- d.Run(ctx) }()
+
+	// Wait for socket to be available.
+	for i := 0; i < 50; i++ {
+		conn, dialErr := net.Dial("unix", socketPath)
+		if dialErr == nil {
+			_ = conn.Close()
+			break
+		}
+		if i == 49 {
+			cancel()
+			t.Fatalf("daemon did not start: %v", dialErr)
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	t.Cleanup(func() {
+		cancel()
+		<-errCh
+	})
+	return cancel
+}
+
+func TestWrite_AutoSessionCreation(t *testing.T) {
+	dir := shortTempDir(t)
+	startTestDaemon(t, dir)
+
+	// Capture stderr to verify session ID is printed.
+	origStderr := os.Stderr
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("create pipe: %v", err)
+	}
+	os.Stderr = w
+
+	opts := WriteOptions{
+		Dir:   dir,
+		Type:  "decision",
+		Title: "test auto-session",
+	}
+	writeErr := Write(opts)
+
+	_ = w.Close()
+	os.Stderr = origStderr
+
+	if writeErr != nil {
+		t.Fatalf("Write() error: %v", writeErr)
+	}
+
+	var buf bytes.Buffer
+	_, _ = buf.ReadFrom(r)
+	sessionID := strings.TrimSpace(buf.String())
+	if sessionID == "" {
+		t.Fatal("expected session ID on stderr, got empty")
+	}
+}
+
+func TestWrite_ExplicitSessionUnchanged(t *testing.T) {
+	dir := shortTempDir(t)
+	startTestDaemon(t, dir)
+
+	// Create a session first.
+	socketPath := filepath.Join(dir, "agentlogd.sock")
+	sid, err := createSession(socketPath)
+	if err != nil {
+		t.Fatalf("createSession: %v", err)
+	}
+
+	// Capture stderr - should be empty when session is explicit.
+	origStderr := os.Stderr
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("create pipe: %v", err)
+	}
+	os.Stderr = w
+
+	opts := WriteOptions{
+		Dir:     dir,
+		Type:    "decision",
+		Title:   "test explicit session",
+		Session: sid,
+	}
+	writeErr := Write(opts)
+
+	_ = w.Close()
+	os.Stderr = origStderr
+
+	if writeErr != nil {
+		t.Fatalf("Write() error: %v", writeErr)
+	}
+
+	var buf bytes.Buffer
+	_, _ = buf.ReadFrom(r)
+	stderrOutput := buf.String()
+	if stderrOutput != "" {
+		t.Fatalf("expected no stderr output for explicit session, got %q", stderrOutput)
 	}
 }

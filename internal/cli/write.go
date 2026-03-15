@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -77,10 +78,43 @@ func splitCSV(s string) []string {
 	return result
 }
 
+// createSession calls the daemon to create a new session and returns the session ID.
+func createSession(socketPath string) (string, error) {
+	req := daemon.Request{Method: "create_session"}
+	resp, err := SendRequest(socketPath, req)
+	if err != nil {
+		return "", fmt.Errorf("daemon is not running (could not connect to %s)", socketPath)
+	}
+	if !resp.OK {
+		return "", fmt.Errorf("daemon error: %s", resp.Error)
+	}
+	var result map[string]string
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		return "", fmt.Errorf("parse session response: %w", err)
+	}
+	id, ok := result["session_id"]
+	if !ok || id == "" {
+		return "", fmt.Errorf("daemon returned no session_id")
+	}
+	return id, nil
+}
+
 // Write validates options, sends a write request to the daemon, and prints the entry ID.
 func Write(opts WriteOptions) error {
+	socketPath := filepath.Join(opts.Dir, "agentlogd.sock")
+
+	sessionID := opts.Session
+	if sessionID == "" {
+		id, err := createSession(socketPath)
+		if err != nil {
+			return err
+		}
+		sessionID = id
+		fmt.Fprintln(os.Stderr, sessionID)
+	}
+
 	entry := daemon.EntryParams{
-		SessionID: opts.Session,
+		SessionID: sessionID,
 		Type:      opts.Type,
 		Title:     opts.Title,
 		Body:      opts.Body,
@@ -98,7 +132,6 @@ func Write(opts WriteOptions) error {
 		Params: params,
 	}
 
-	socketPath := filepath.Join(opts.Dir, "agentlogd.sock")
 	resp, err := SendRequest(socketPath, req)
 	if err != nil {
 		return fmt.Errorf("daemon is not running (could not connect to %s)", socketPath)
