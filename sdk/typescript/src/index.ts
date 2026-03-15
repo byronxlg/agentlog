@@ -1,9 +1,9 @@
 /**
- * @agentlog/sdk - TypeScript SDK for the agentlog decision log daemon.
+ * agentlog-sdk - TypeScript SDK for the agentlog decision log daemon.
  *
  * Usage:
  *
- *   import { AgentlogClient } from "@agentlog/sdk";
+ *   import { AgentlogClient } from "agentlog-sdk";
  *
  *   const client = new AgentlogClient();
  *   await client.write({ type: "decision", title: "Use PostgreSQL" });

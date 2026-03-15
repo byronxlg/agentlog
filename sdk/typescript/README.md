@@ -1,17 +1,17 @@
-# @agentlog/sdk
+# agentlog-sdk
 
 TypeScript client for [agentlog](https://github.com/byronxlg/agentlog) - a local-first decision log daemon for agentic workflows.
 
 ## Installation
 
 ```bash
-npm install @agentlog/sdk
+npm install agentlog-sdk
 ```
 
 ## Quickstart
 
 ```typescript
-import { AgentlogClient } from "@agentlog/sdk";
+import { AgentlogClient } from "agentlog-sdk";
 
 const client = new AgentlogClient();
 await client.write({ type: "decision", title: "Use PostgreSQL for persistence" });
@@ -28,7 +28,7 @@ const entries = await client.query({ text: "database" });
 ### Writing entries
 
 ```typescript
-import { AgentlogClient } from "@agentlog/sdk";
+import { AgentlogClient } from "agentlog-sdk";
 
 const client = new AgentlogClient();
 
@@ -111,7 +111,7 @@ import {
   AgentlogError,
   ConnectionError,
   DaemonNotRunningError,
-} from "@agentlog/sdk";
+} from "agentlog-sdk";
 
 const client = new AgentlogClient();
 

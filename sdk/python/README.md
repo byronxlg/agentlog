@@ -5,7 +5,7 @@ Python client for [agentlog](https://github.com/byronxlg/agentlog) - a local-fir
 ## Installation
 
 ```bash
-pip install agentlog
+pip install agentlog-sdk
 ```
 
 ## Quickstart

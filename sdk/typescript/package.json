@@ -1,5 +1,5 @@
 {
-  "name": "@agentlog/sdk",
+  "name": "agentlog-sdk",
   "version": "0.1.0",
   "description": "TypeScript SDK for agentlog - a local-first decision log daemon for agentic workflows",
   "type": "module",
