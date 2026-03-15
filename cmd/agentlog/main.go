@@ -24,6 +24,7 @@ func usage() {
 	fmt.Fprintln(os.Stderr, "  start         Start the agentlogd daemon")
 	fmt.Fprintln(os.Stderr, "  stop          Stop the agentlogd daemon")
 	fmt.Fprintln(os.Stderr, "  write         Write a decision entry to the log")
+	fmt.Fprintln(os.Stderr, "  log           List decision entries with optional filters")
 	fmt.Fprintln(os.Stderr, "  query         Full-text search across decision entries")
 	fmt.Fprintln(os.Stderr, "  blame <file>  Show decisions referencing a file")
 }
@@ -56,6 +57,13 @@ func main() {
 			os.Exit(1)
 		}
 		err = cli.Write(opts)
+	case "log":
+		logOpts, parseErr := cli.ParseLogArgs(dir, args[1:])
+		if parseErr != nil {
+			fmt.Fprintf(os.Stderr, "agentlog log: %s\n", parseErr)
+			os.Exit(1)
+		}
+		err = cli.Log(logOpts)
 	case "query":
 		cfg, parseErr := cli.ParseQueryArgs(args[1:])
 		if parseErr != nil {
