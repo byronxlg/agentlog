@@ -42,4 +42,10 @@ jobs:
         working-directory: sdk/typescript
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish --access public
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          if npm view "agentlog-sdk@${VERSION}" version >/dev/null 2>&1; then
+            echo "Version ${VERSION} is already published on npm, skipping"
+          else
+            npm publish --access public
+          fi
