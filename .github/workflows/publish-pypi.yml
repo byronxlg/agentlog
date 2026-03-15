@@ -1,0 +1,44 @@
+name: Publish Python SDK to PyPI
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: pypi
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Set version from tag
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          sed -i "s/^version = \".*\"/version = \"${VERSION}\"/" sdk/python/pyproject.toml
+          echo "Publishing version ${VERSION}"
+          grep '^version' sdk/python/pyproject.toml
+
+      - name: Install build tools
+        run: pip install build
+
+      - name: Build package
+        run: python -m build sdk/python/
+
+      - name: Verify package
+        run: |
+          pip install sdk/python/dist/*.whl
+          python -c "import agentlog; print('Import successful')"
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: sdk/python/dist/
