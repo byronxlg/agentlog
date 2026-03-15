@@ -6,7 +6,6 @@ repo_name: byronxlg/agentlog
 
 theme:
   name: material
-  custom_dir: overrides
   features:
     - content.code.copy
     - navigation.sections

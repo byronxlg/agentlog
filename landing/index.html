@@ -3,124 +3,158 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>agentlog - Decision log for agentic workflows</title>
+  <title>agentlog - Decision log daemon for agentic workflows</title>
   <meta name="description" content="A local-first, framework-agnostic decision log daemon for agentic workflows. Captures why decisions were made, not just what changed.">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header>
-    <nav>
-      <span class="nav-brand">agentlog</span>
-      <span class="nav-links">
-        <a href="/agentlog/docs/">Docs</a>
-        <a href="https://github.com/byronxlg/agentlog">GitHub</a>
-      </span>
-    </nav>
-  </header>
 
-  <main>
+  <div class="hero-wrapper">
+    <nav class="nav">
+      <a class="nav-logo" href="/agentlog/">agentlog</a>
+      <ul class="nav-links">
+        <li><a href="/agentlog/docs/">Docs</a></li>
+        <li><a href="https://github.com/byronxlg/agentlog">GitHub</a></li>
+      </ul>
+    </nav>
+
     <section class="hero">
       <h1>agentlog</h1>
-      <p class="tagline">The missing layer between git history and LLM traces</p>
-      <p class="subtitle">A local-first decision log daemon for agentic workflows. Captures why decisions were made, what alternatives were considered, and what failed before the final approach.</p>
+      <p class="tagline">Decision log daemon for agentic workflows</p>
+      <p class="description">
+        Capture agent decisions and reasoning - the missing layer between
+        git history and LLM traces. Local-first, framework-agnostic,
+        built for developers.
+      </p>
+      <div class="hero-buttons">
+        <a class="btn btn-primary" href="/agentlog/docs/getting-started/">Get Started</a>
+        <a class="btn btn-secondary" href="https://github.com/byronxlg/agentlog">View on GitHub</a>
+      </div>
     </section>
+  </div>
 
-    <section class="problem">
-      <h2>The problem</h2>
-      <p>Git tells you <strong>what</strong> changed. LLM traces tell you <strong>what was said</strong>. Neither tells you <strong>why</strong> a decision was made.</p>
-      <p>When an agent chooses approach A over approach B, that reasoning disappears. When something fails and the agent pivots, the failed attempt is lost. When assumptions are made, they go unrecorded.</p>
-      <p>agentlog captures these decisions as structured, queryable entries - so future sessions have the context they need.</p>
+  <div class="section-alt">
+    <section class="section">
+      <h2>Why agent decisions get lost</h2>
+      <p>
+        When AI agents work on your codebase, critical context disappears.
+        Git tells you what changed. LLM traces tell you what was said.
+        Neither tells you why a decision was made, what alternatives were
+        considered, or what failed before the final approach.
+      </p>
+      <div class="problem-grid">
+        <div class="problem-card">
+          <h3>git log</h3>
+          <p>Records what changed, but not why this approach was chosen over alternatives.</p>
+        </div>
+        <div class="problem-card">
+          <h3>LLM traces</h3>
+          <p>Capture the conversation, but important decisions are buried in thousands of tokens.</p>
+        </div>
+        <div class="problem-card">
+          <h3>agentlog</h3>
+          <p>Structured decision records with context, reasoning, alternatives, and file associations.</p>
+        </div>
+      </div>
     </section>
+  </div>
 
-    <section class="how-it-works">
-      <h2>How it works</h2>
-      <pre><code># Start the daemon
-$ agentlog start
-agentlogd started (PID 12345)
+  <section class="section">
+    <h2>How it works</h2>
+    <p>
+      agentlog runs as a lightweight daemon alongside your development tools.
+      Agents (or you) write structured decision entries. Everything is stored
+      locally in append-only JSONL files with a SQLite index for fast queries.
+    </p>
+    <div class="code-block">
+      <pre><span class="c"># Start the daemon</span>
+agentlog start
 
-# Log a decision
-$ agentlog write --type decision \
-    --title "Use SQLite for the index" \
-    --body "SQLite keeps us single-binary and local-first" \
-    --tags "architecture,database" \
-    --files "internal/index/index.go"
+<span class="c"># Log a decision</span>
+agentlog write <span class="f">--type</span> decision <span class="f">--title</span> <span class="s">"Use SQLite for the index"</span> \
+  <span class="f">--body</span> <span class="s">"JSONL for durability, SQLite for queries. Index is rebuildable."</span> \
+  <span class="f">--tags</span> <span class="s">"architecture,storage"</span>
 
-# Query decisions
-$ agentlog log --since 1h
-2026-03-15 10:30:00 [decision] (a1b2c3d4) Use SQLite for the index
+<span class="c"># Search your decisions</span>
+agentlog query <span class="s">"SQLite"</span>
 
-# Search by keyword
-$ agentlog query "SQLite"
+<span class="c"># See which decisions affected a file</span>
+agentlog blame src/index.ts</pre>
+    </div>
+  </section>
 
-# See what decisions affected a file
-$ agentlog blame internal/index/index.go</code></pre>
-    </section>
-
-    <section class="features">
+  <div class="section-alt">
+    <section class="section">
       <h2>Features</h2>
-      <div class="feature-grid">
-        <div class="feature">
+      <div class="features-grid">
+        <div class="feature-card">
           <h3>Local-first</h3>
-          <p>Everything stays on your machine. JSONL files you can read with cat, grep, and jq. SQLite index for fast queries.</p>
+          <p>Everything stays on your machine. No cloud services, no accounts, no network dependency. Your decisions live alongside your code.</p>
         </div>
-        <div class="feature">
+        <div class="feature-card">
+          <h3>JSONL + SQLite</h3>
+          <p>Append-only JSONL logs are human-readable, git-committable, and greppable. SQLite index enables fast queries and full-text search.</p>
+        </div>
+        <div class="feature-card">
           <h3>Framework-agnostic</h3>
-          <p>Works with any LLM framework, any agent architecture. CLI, Python SDK, and TypeScript SDK.</p>
+          <p>Works with any AI agent, any language, any workflow. Not tied to a specific LLM provider or development tool.</p>
         </div>
-        <div class="feature">
-          <h3>Five entry types</h3>
-          <p>decision, attempt_failed, deferred, assumption, question - structured vocabulary for agent reasoning.</p>
+        <div class="feature-card">
+          <h3>Python SDK</h3>
+          <p>Programmatic access from Python. Write decisions, query the log, and integrate with your existing tooling.</p>
         </div>
-        <div class="feature">
-          <h3>File blame</h3>
-          <p>See which decisions affected a specific file. Like git blame, but for the reasoning behind changes.</p>
+        <div class="feature-card">
+          <h3>TypeScript SDK</h3>
+          <p>First-class TypeScript support. Type-safe client for writing and querying agent decisions.</p>
         </div>
-        <div class="feature">
-          <h3>Session tracking</h3>
-          <p>Group related decisions within a coding session. Review an entire session's reasoning at once.</p>
-        </div>
-        <div class="feature">
-          <h3>Single binary</h3>
-          <p>Pure Go, no CGO, no external dependencies. One binary for the daemon, one for the CLI.</p>
+        <div class="feature-card">
+          <h3>Claude Code integration</h3>
+          <p>Automatic decision logging when working with Claude Code. Hooks into agent lifecycle with zero configuration.</p>
         </div>
       </div>
     </section>
+  </div>
 
-    <section class="get-started">
-      <h2>Get started</h2>
-      <pre><code>git clone https://github.com/byronxlg/agentlog.git
-cd agentlog
-make build
-export PATH="$PWD/bin:$PATH"
-agentlog start</code></pre>
-      <p><a href="/agentlog/docs/getting-started/">Full installation guide</a></p>
-    </section>
-
-    <section class="sdks">
-      <h2>SDKs</h2>
-      <div class="sdk-grid">
-        <div class="sdk">
-          <h3>Python</h3>
-          <pre><code>pip install agentlog</code></pre>
-          <p><a href="/agentlog/docs/python-sdk/">Documentation</a></p>
-        </div>
-        <div class="sdk">
-          <h3>TypeScript</h3>
-          <pre><code>npm install agentlog</code></pre>
-          <p><a href="/agentlog/docs/typescript-sdk/">Documentation</a></p>
+  <section class="section">
+    <h2>Quickstart</h2>
+    <div class="quickstart-steps">
+      <div class="quickstart-step">
+        <h3>1. Install</h3>
+        <div class="code-block">
+          <pre>go install github.com/byronxlg/agentlog@latest</pre>
         </div>
       </div>
-    </section>
+      <div class="quickstart-step">
+        <h3>2. Start the daemon</h3>
+        <div class="code-block">
+          <pre>agentlog start</pre>
+        </div>
+      </div>
+      <div class="quickstart-step">
+        <h3>3. Log your first decision</h3>
+        <div class="code-block">
+          <pre>agentlog write <span class="f">--type</span> decision <span class="f">--title</span> <span class="s">"Chose Postgres over MySQL"</span> \
+  <span class="f">--body</span> <span class="s">"Better JSON support, needed for our schema-flexible data model."</span></pre>
+        </div>
+      </div>
+    </div>
+    <p>
+      See the <a href="/agentlog/docs/getting-started/">Getting Started guide</a> for the full
+      walkthrough, or browse the <a href="/agentlog/docs/cli-reference/">CLI Reference</a>
+      for all available commands.
+    </p>
+  </section>
 
-    <section class="claude-code">
-      <h2>Claude Code integration</h2>
-      <p>Add a snippet to your CLAUDE.md and Claude logs decisions automatically. Or use hooks for zero-config capture.</p>
-      <p><a href="/agentlog/docs/claude-code/">Integration guide</a></p>
-    </section>
-  </main>
+  <div class="footer-wrapper">
+    <footer class="footer">
+      <span class="footer-text">agentlog - MIT License</span>
+      <ul class="footer-links">
+        <li><a href="/agentlog/docs/">Documentation</a></li>
+        <li><a href="https://github.com/byronxlg/agentlog">GitHub</a></li>
+        <li><a href="/agentlog/docs/architecture/">Architecture</a></li>
+      </ul>
+    </footer>
+  </div>
 
-  <footer>
-    <p>agentlog is open source. <a href="https://github.com/byronxlg/agentlog">View on GitHub</a></p>
-  </footer>
 </body>
 </html>
