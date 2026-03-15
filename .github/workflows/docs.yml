@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'docs-site/**'
+      - 'landing/**'
   workflow_dispatch:
 
 permissions:
@@ -35,11 +36,17 @@ jobs:
       - name: Build docs
         run: mkdocs build --strict --config-file docs-site/mkdocs.yml
 
+      - name: Assemble site
+        run: |
+          mkdir -p _site/docs
+          cp landing/index.html landing/style.css _site/
+          cp -r docs-site/site/* _site/docs/
+
       - uses: actions/configure-pages@v5
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: docs-site/site
+          path: _site
 
       - id: deployment
         uses: actions/deploy-pages@v4

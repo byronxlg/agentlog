@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>agentlog - Decision log daemon for agentic workflows</title>
+  <meta name="description" content="A local-first, framework-agnostic decision log daemon for agentic workflows. Captures agent decisions and reasoning.">
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      --color-bg-dark: #141422;
+      --color-bg-dark-alt: #1c1c34;
+      --color-bg-light: #ffffff;
+      --color-bg-gray: #f6f7f9;
+      --color-text-primary: #1a1a2e;
+      --color-text-secondary: #555566;
+      --color-text-light: #e0e0ec;
+      --color-text-muted: #9999aa;
+      --color-accent: #4a6cf7;
+      --color-accent-hover: #3a5ce5;
+      --color-code-bg: #1e1e32;
+      --color-code-border: #2a2a44;
+      --color-code-comment: #6a6a8a;
+      --color-code-string: #a5d6a7;
+      --color-code-flag: #90caf9;
+      --color-code-text: #d4d4e8;
+      --color-border: #e0e0e8;
+      --max-width: 800px;
+      --max-width-wide: 960px;
+    }
+
+    html {
+      font-size: 16px;
+      line-height: 1.6;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      color: var(--color-text-primary);
+      background: var(--color-bg-light);
+    }
+
+    a {
+      color: var(--color-accent);
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    code {
+      font-family: var(--font-mono);
+      font-size: 0.9em;
+    }
+
+    /* ---- Navigation ---- */
+
+    .nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      max-width: var(--max-width-wide);
+      margin: 0 auto;
+      padding: 1rem 1.5rem;
+    }
+
+    .nav-logo {
+      font-family: var(--font-mono);
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--color-text-light);
+      text-decoration: none;
+    }
+
+    .nav-logo:hover {
+      text-decoration: none;
+      color: #ffffff;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 1.5rem;
+      list-style: none;
+    }
+
+    .nav-links a {
+      color: var(--color-text-muted);
+      font-size: 0.95rem;
+      font-weight: 500;
+    }
+
+    .nav-links a:hover {
+      color: var(--color-text-light);
+      text-decoration: none;
+    }
+
+    /* ---- Hero ---- */
+
+    .hero-wrapper {
+      background: var(--color-bg-dark);
+    }
+
+    .hero {
+      max-width: var(--max-width);
+      margin: 0 auto;
+      padding: 4rem 1.5rem 4.5rem;
+      text-align: center;
+    }
+
+    .hero h1 {
+      font-family: var(--font-mono);
+      font-size: 2.75rem;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 0.75rem;
+      letter-spacing: -0.02em;
+    }
+
+    .hero .tagline {
+      font-size: 1.25rem;
+      color: var(--color-text-muted);
+      margin-bottom: 1.5rem;
+      max-width: 560px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .hero .description {
+      font-size: 1.05rem;
+      color: var(--color-text-light);
+      max-width: 600px;
+      margin: 0 auto 2rem;
+      line-height: 1.7;
+    }
+
+    .hero-buttons {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-block;
+      padding: 0.65rem 1.5rem;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: background-color 0.15s ease;
+    }
+
+    .btn:hover {
+      text-decoration: none;
+    }
+
+    .btn-primary {
+      background: var(--color-accent);
+      color: #ffffff;
+    }
+
+    .btn-primary:hover {
+      background: var(--color-accent-hover);
+      color: #ffffff;
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--color-text-light);
+      border: 1px solid var(--color-text-muted);
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--color-text-light);
+      color: #ffffff;
+    }
+
+    /* ---- Sections ---- */
+
+    .section {
+      max-width: var(--max-width);
+      margin: 0 auto;
+      padding: 3.5rem 1.5rem;
+    }
+
+    .section-alt {
+      background: var(--color-bg-gray);
+    }
+
+    .section h2 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      letter-spacing: -0.01em;
+    }
+
+    .section h3 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+
+    .section p {
+      color: var(--color-text-secondary);
+      line-height: 1.7;
+      margin-bottom: 1rem;
+    }
+
+    .section p:last-child {
+      margin-bottom: 0;
+    }
+
+    /* ---- Problem ---- */
+
+    .problem-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 1.5rem;
+      margin-top: 1.5rem;
+    }
+
+    .problem-card {
+      background: var(--color-bg-light);
+      border: 1px solid var(--color-border);
+      border-radius: 8px;
+      padding: 1.25rem;
+    }
+
+    .problem-card h3 {
+      font-family: var(--font-mono);
+      font-size: 0.95rem;
+      color: var(--color-text-primary);
+    }
+
+    .problem-card p {
+      font-size: 0.9rem;
+      margin-bottom: 0;
+    }
+
+    /* ---- How it works ---- */
+
+    .code-block {
+      background: var(--color-code-bg);
+      border: 1px solid var(--color-code-border);
+      border-radius: 8px;
+      padding: 1.25rem 1.5rem;
+      overflow-x: auto;
+      margin: 1.5rem 0;
+    }
+
+    .code-block pre {
+      margin: 0;
+      font-family: var(--font-mono);
+      font-size: 0.875rem;
+      line-height: 1.65;
+      color: var(--color-code-text);
+    }
+
+    .code-block .comment {
+      color: var(--color-code-comment);
+    }
+
+    .code-block .command {
+      color: var(--color-code-text);
+    }
+
+    .code-block .flag {
+      color: var(--color-code-flag);
+    }
+
+    .code-block .string {
+      color: var(--color-code-string);
+    }
+
+    /* ---- Features ---- */
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-top: 1.5rem;
+    }
+
+    .feature-card {
+      padding: 1.25rem;
+      border: 1px solid var(--color-border);
+      border-radius: 8px;
+    }
+
+    .feature-card h3 {
+      font-family: var(--font-mono);
+      font-size: 0.95rem;
+      color: var(--color-text-primary);
+    }
+
+    .feature-card p {
+      font-size: 0.9rem;
+      margin-bottom: 0;
+    }
+
+    /* ---- Quickstart ---- */
+
+    .quickstart-steps {
+      margin-top: 1.5rem;
+    }
+
+    .quickstart-step {
+      margin-bottom: 1.5rem;
+    }
+
+    .quickstart-step h3 {
+      font-family: var(--font-mono);
+      font-size: 1rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .quickstart-step .code-block {
+      margin: 0.5rem 0 0;
+    }
+
+    .quickstart-step p {
+      font-size: 0.95rem;
+    }
+
+    /* ---- Footer ---- */
+
+    .footer-wrapper {
+      background: var(--color-bg-dark);
+      margin-top: 2rem;
+    }
+
+    .footer {
+      max-width: var(--max-width-wide);
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .footer-text {
+      color: var(--color-text-muted);
+      font-size: 0.85rem;
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 1.5rem;
+      list-style: none;
+    }
+
+    .footer-links a {
+      color: var(--color-text-muted);
+      font-size: 0.85rem;
+    }
+
+    .footer-links a:hover {
+      color: var(--color-text-light);
+    }
+
+    /* ---- Responsive ---- */
+
+    @media (max-width: 768px) {
+      .hero h1 {
+        font-size: 2rem;
+      }
+
+      .hero .tagline {
+        font-size: 1.1rem;
+      }
+
+      .problem-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .features-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .footer {
+        flex-direction: column;
+        text-align: center;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .hero {
+        padding: 2.5rem 1rem 3rem;
+      }
+
+      .hero h1 {
+        font-size: 1.75rem;
+      }
+
+      .section {
+        padding: 2.5rem 1rem;
+      }
+
+      .hero-buttons {
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .nav {
+        padding: 0.75rem 1rem;
+      }
+
+      .nav-links {
+        gap: 1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navigation -->
+  <div class="hero-wrapper">
+    <nav class="nav">
+      <a class="nav-logo" href=".">agentlog</a>
+      <ul class="nav-links">
+        <li><a href="getting-started/">Docs</a></li>
+        <li><a href="https://github.com/byronxlg/agentlog">GitHub</a></li>
+      </ul>
+    </nav>
+
+    <!-- Hero -->
+    <section class="hero">
+      <h1>agentlog</h1>
+      <p class="tagline">Decision log daemon for agentic workflows</p>
+      <p class="description">
+        Capture agent decisions and reasoning - the missing layer between
+        git history and LLM traces. Local-first, framework-agnostic,
+        built for developers.
+      </p>
+      <div class="hero-buttons">
+        <a class="btn btn-primary" href="getting-started/">Get Started</a>
+        <a class="btn btn-secondary" href="https://github.com/byronxlg/agentlog">View on GitHub</a>
+      </div>
+    </section>
+  </div>
+
+  <!-- Problem statement -->
+  <div class="section-alt">
+    <section class="section">
+      <h2>Why agent decisions get lost</h2>
+      <p>
+        When AI agents work on your codebase, critical context disappears.
+        Git tells you what changed. LLM traces tell you what was said.
+        Neither tells you why a decision was made, what alternatives were
+        considered, or what failed before the final approach.
+      </p>
+      <div class="problem-grid">
+        <div class="problem-card">
+          <h3>git log</h3>
+          <p>Records what changed, but not why this approach was chosen over alternatives.</p>
+        </div>
+        <div class="problem-card">
+          <h3>LLM traces</h3>
+          <p>Capture the conversation, but important decisions are buried in thousands of tokens.</p>
+        </div>
+        <div class="problem-card">
+          <h3>agentlog</h3>
+          <p>Structured decision records with context, reasoning, alternatives, and file associations.</p>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- How it works -->
+  <section class="section">
+    <h2>How it works</h2>
+    <p>
+      agentlog runs as a lightweight daemon alongside your development tools.
+      Agents (or you) write structured decision entries. Everything is stored
+      locally in append-only JSONL files with a SQLite index for fast queries.
+    </p>
+    <div class="code-block">
+      <pre><span class="comment"># Start the daemon</span>
+<span class="command">agentlog start</span>
+
+<span class="comment"># Log a decision</span>
+<span class="command">agentlog write</span> <span class="flag">--type</span> decision <span class="flag">--title</span> <span class="string">"Use SQLite for the index"</span> \
+  <span class="flag">--body</span> <span class="string">"JSONL for durability, SQLite for queries. Index is rebuildable."</span> \
+  <span class="flag">--tags</span> <span class="string">"architecture,storage"</span>
+
+<span class="comment"># Search your decisions</span>
+<span class="command">agentlog query</span> <span class="string">"SQLite"</span>
+
+<span class="comment"># See which decisions affected a file</span>
+<span class="command">agentlog blame</span> src/index.ts</pre>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <div class="section-alt">
+    <section class="section">
+      <h2>Features</h2>
+      <div class="features-grid">
+        <div class="feature-card">
+          <h3>Local-first</h3>
+          <p>Everything stays on your machine. No cloud services, no accounts, no network dependency. Your decisions live alongside your code.</p>
+        </div>
+        <div class="feature-card">
+          <h3>JSONL + SQLite</h3>
+          <p>Append-only JSONL logs are human-readable, git-committable, and greppable. SQLite index enables fast queries and full-text search.</p>
+        </div>
+        <div class="feature-card">
+          <h3>Framework-agnostic</h3>
+          <p>Works with any AI agent, any language, any workflow. Not tied to a specific LLM provider or development tool.</p>
+        </div>
+        <div class="feature-card">
+          <h3>Python SDK</h3>
+          <p>Programmatic access from Python. Write decisions, query the log, and integrate with your existing tooling.</p>
+        </div>
+        <div class="feature-card">
+          <h3>TypeScript SDK</h3>
+          <p>First-class TypeScript support. Type-safe client for writing and querying agent decisions.</p>
+        </div>
+        <div class="feature-card">
+          <h3>Claude Code integration</h3>
+          <p>Automatic decision logging when working with Claude Code. Hooks into agent lifecycle with zero configuration.</p>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Quickstart -->
+  <section class="section">
+    <h2>Quickstart</h2>
+    <div class="quickstart-steps">
+      <div class="quickstart-step">
+        <h3>1. Install</h3>
+        <div class="code-block">
+          <pre><span class="command">go install</span> github.com/byronxlg/agentlog@latest</pre>
+        </div>
+      </div>
+      <div class="quickstart-step">
+        <h3>2. Start the daemon</h3>
+        <div class="code-block">
+          <pre><span class="command">agentlog start</span></pre>
+        </div>
+      </div>
+      <div class="quickstart-step">
+        <h3>3. Log your first decision</h3>
+        <div class="code-block">
+          <pre><span class="command">agentlog write</span> <span class="flag">--type</span> decision <span class="flag">--title</span> <span class="string">"Chose Postgres over MySQL"</span> \
+  <span class="flag">--body</span> <span class="string">"Better JSON support, needed for our schema-flexible data model."</span></pre>
+        </div>
+      </div>
+    </div>
+    <p>
+      See the <a href="getting-started/">Getting Started guide</a> for the full
+      walkthrough, or browse the <a href="cli-reference/">CLI Reference</a>
+      for all available commands.
+    </p>
+  </section>
+
+  <!-- Footer -->
+  <div class="footer-wrapper">
+    <footer class="footer">
+      <span class="footer-text">agentlog - MIT License</span>
+      <ul class="footer-links">
+        <li><a href="getting-started/">Documentation</a></li>
+        <li><a href="https://github.com/byronxlg/agentlog">GitHub</a></li>
+        <li><a href="architecture/">Architecture</a></li>
+      </ul>
+    </footer>
+  </div>
+
+</body>
+</html>

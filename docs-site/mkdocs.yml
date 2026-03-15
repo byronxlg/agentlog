@@ -1,11 +1,12 @@
 site_name: agentlog
 site_description: A local-first decision log daemon for agentic workflows
-site_url: https://byronxlg.github.io/agentlog/
+site_url: https://byronxlg.github.io/agentlog/docs/
 repo_url: https://github.com/byronxlg/agentlog
 repo_name: byronxlg/agentlog
 
 theme:
   name: material
+  custom_dir: overrides
   features:
     - content.code.copy
     - navigation.sections
