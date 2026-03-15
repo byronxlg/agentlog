@@ -225,6 +225,48 @@ func TestQueryByFilePath(t *testing.T) {
 	}
 }
 
+func TestQueryRecent(t *testing.T) {
+	idx := testIndex(t)
+	base := time.Date(2026, 1, 15, 0, 0, 0, 0, time.UTC)
+
+	for i := 0; i < 5; i++ {
+		e := testEntry(fmt.Sprintf("e%d", i+1), base.Add(time.Duration(i)*time.Hour))
+		if err := idx.Insert(e); err != nil {
+			t.Fatalf("insert: %v", err)
+		}
+	}
+
+	// Most recent first, limit 3
+	results, err := idx.QueryRecent(3, 0)
+	if err != nil {
+		t.Fatalf("query recent: %v", err)
+	}
+	if len(results) != 3 {
+		t.Fatalf("expected 3 results, got %d", len(results))
+	}
+	if results[0].ID != "e5" {
+		t.Errorf("first result should be most recent: got %q, want e5", results[0].ID)
+	}
+	if results[2].ID != "e3" {
+		t.Errorf("third result: got %q, want e3", results[2].ID)
+	}
+
+	// With offset
+	results, err = idx.QueryRecent(2, 3)
+	if err != nil {
+		t.Fatalf("query recent with offset: %v", err)
+	}
+	if len(results) != 2 {
+		t.Fatalf("expected 2 results, got %d", len(results))
+	}
+	if results[0].ID != "e2" {
+		t.Errorf("first result after offset: got %q, want e2", results[0].ID)
+	}
+	if results[1].ID != "e1" {
+		t.Errorf("second result after offset: got %q, want e1", results[1].ID)
+	}
+}
+
 func TestSearch(t *testing.T) {
 	idx := testIndex(t)
 	ts := time.Date(2026, 1, 15, 0, 0, 0, 0, time.UTC)

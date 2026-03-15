@@ -76,6 +76,8 @@ func Log(opts LogOptions) error {
 		Type:      opts.Type,
 		SessionID: opts.Session,
 		FilePath:  opts.File,
+		Limit:     opts.Limit,
+		Offset:    opts.Offset,
 	}
 
 	if opts.Tag != "" {
