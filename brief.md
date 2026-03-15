@@ -124,7 +124,7 @@ agentlog.write(
 **From TypeScript:**
 
 ```typescript
-import { agentlog } from '@agentlog/sdk'
+import { agentlog } from 'agentlog-sdk'
 
 await agentlog.write({
   type: 'deferred',
@@ -272,8 +272,8 @@ Agents are increasingly doing real delivery work. Clients want an audit trail �
 
 **Phase 2 — SDKs**
 
-- Python SDK (`pip install agentlog`)
-- TypeScript SDK (`npm install @agentlog/sdk`)
+- Python SDK (`pip install agentlog-sdk`)
+- TypeScript SDK (`npm install agentlog-sdk`)
 - Claude Code slash command (`/agentlog`)
 
 **Phase 3 — Context API**
