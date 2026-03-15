@@ -25,6 +25,7 @@ func usage() {
 	fmt.Fprintln(os.Stderr, "  stop          Stop the agentlogd daemon")
 	fmt.Fprintln(os.Stderr, "  write         Write a decision entry to the log")
 	fmt.Fprintln(os.Stderr, "  query         Full-text search across decision entries")
+	fmt.Fprintln(os.Stderr, "  show <id>     Show all entries in a session")
 	fmt.Fprintln(os.Stderr, "  blame <file>  Show decisions referencing a file")
 }
 
@@ -63,6 +64,12 @@ func main() {
 			os.Exit(1)
 		}
 		os.Exit(cli.RunQuery(cfg))
+	case "show":
+		if len(args) < 2 {
+			fmt.Fprintln(os.Stderr, "Usage: agentlog show <session_id>")
+			os.Exit(1)
+		}
+		err = cli.Show(cli.ShowOptions{Dir: dir, SessionID: args[1]})
 	case "blame":
 		if len(args) < 2 {
 			fmt.Fprintln(os.Stderr, "Usage: agentlog blame [--verbose] <file>")
