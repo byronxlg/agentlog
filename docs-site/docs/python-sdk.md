@@ -5,7 +5,7 @@ Python client for agentlog. Provides programmatic access to the decision log dae
 ## Installation
 
 ```bash
-pip install agentlog
+pip install agentlog-sdk
 ```
 
 ## Requirements

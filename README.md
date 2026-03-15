@@ -94,7 +94,7 @@ All commands accept `--dir <path>` to override the data directory (default: `~/.
 Install the Python SDK for programmatic access:
 
 ```bash
-pip install agentlog
+pip install agentlog-sdk
 ```
 
 ```python
