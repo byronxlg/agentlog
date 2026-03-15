@@ -2,6 +2,8 @@
 
 A local-first, framework-agnostic decision log daemon for agentic workflows. Captures agent decisions and reasoning - the missing layer between git history and LLM traces.
 
+[Landing page](https://byronxlg.github.io/agentlog/) | [Documentation](https://byronxlg.github.io/agentlog/docs/)
+
 ## Why
 
 Git tells you *what* changed. LLM traces tell you *what was said*. Neither tells you *why* a decision was made, what alternatives were considered, or what failed before the final approach. agentlog fills that gap.
