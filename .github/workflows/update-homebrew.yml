@@ -1,0 +1,96 @@
+name: Update Homebrew Formula
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  update-formula:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${{ github.event.release.tag_name }}"
+          for i in $(seq 1 30); do
+            if gh release view "$VERSION" --repo byronxlg/agentlog --json assets --jq '.assets[].name' | grep -q checksums.txt; then
+              echo "Assets available"
+              exit 0
+            fi
+            echo "Waiting for release assets (attempt $i)..."
+            sleep 10
+          done
+          echo "Timed out waiting for assets"
+          exit 1
+
+      - name: Download checksums
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${{ github.event.release.tag_name }}"
+          gh release download "$VERSION" --repo byronxlg/agentlog --pattern checksums.txt
+          cat checksums.txt
+
+      - name: Generate formula
+        run: |
+          VERSION="${{ github.event.release.tag_name }}"
+          VERSION_NUM="${VERSION#v}"
+          SHA_DARWIN_ARM64=$(grep "darwin-arm64" checksums.txt | awk '{print $1}')
+          SHA_DARWIN_AMD64=$(grep "darwin-amd64" checksums.txt | awk '{print $1}')
+          SHA_LINUX_AMD64=$(grep "linux-amd64" checksums.txt | awk '{print $1}')
+          SHA_LINUX_ARM64=$(grep "linux-arm64" checksums.txt | awk '{print $1}')
+          cat > agentlog.rb << FORMULA
+          class Agentlog < Formula
+            desc "Local-first decision log daemon for agentic workflows"
+            homepage "https://github.com/byronxlg/agentlog"
+            version "${VERSION_NUM}"
+
+            on_macos do
+              on_arm do
+                url "https://github.com/byronxlg/agentlog/releases/download/v#{version}/agentlog-v#{version}-darwin-arm64.tar.gz"
+                sha256 "${SHA_DARWIN_ARM64}"
+              end
+              on_intel do
+                url "https://github.com/byronxlg/agentlog/releases/download/v#{version}/agentlog-v#{version}-darwin-amd64.tar.gz"
+                sha256 "${SHA_DARWIN_AMD64}"
+              end
+            end
+
+            on_linux do
+              on_arm do
+                url "https://github.com/byronxlg/agentlog/releases/download/v#{version}/agentlog-v#{version}-linux-arm64.tar.gz"
+                sha256 "${SHA_LINUX_ARM64}"
+              end
+              on_intel do
+                url "https://github.com/byronxlg/agentlog/releases/download/v#{version}/agentlog-v#{version}-linux-amd64.tar.gz"
+                sha256 "${SHA_LINUX_AMD64}"
+              end
+            end
+
+            def install
+              os = OS.mac? ? "darwin" : "linux"
+              arch = Hardware::CPU.arm? ? "arm64" : "amd64"
+              bin.install "agentlog-#{os}-#{arch}" => "agentlog"
+              bin.install "agentlogd-#{os}-#{arch}" => "agentlogd"
+            end
+
+            test do
+              assert_match "agentlog", shell_output("#{bin}/agentlog 2>&1", 1)
+            end
+          end
+          FORMULA
+          cat agentlog.rb
+
+      - name: Push to tap
+        env:
+          TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          git clone "https://x-access-token:${TAP_TOKEN}@github.com/byronxlg/homebrew-agentlog.git" tap
+          cp agentlog.rb tap/Formula/agentlog.rb
+          cd tap
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/agentlog.rb
+          git commit -m "Update agentlog to ${{ github.event.release.tag_name }}"
+          git push
