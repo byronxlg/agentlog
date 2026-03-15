@@ -46,7 +46,7 @@ func TestHandleRequest_Routing(t *testing.T) {
 	d := newTestDaemon(t)
 	defer func() { _ = d.index.Close() }()
 
-	methods := []string{"write", "query", "search", "get_session", "list_sessions", "create_session", "blame"}
+	methods := []string{"write", "query", "search", "get_session", "list_sessions", "create_session", "blame", "context"}
 	for _, m := range methods {
 		resp := d.handleRequest(Request{Method: m})
 		// All methods should be routed (not return "unknown method")
@@ -168,6 +168,110 @@ func TestHandleQuery_NoFilter(t *testing.T) {
 	}
 	if len(entries) != 1 {
 		t.Fatalf("expected 1 entry with offset, got %d", len(entries))
+	}
+}
+
+func TestHandleContext(t *testing.T) {
+	d := newTestDaemon(t)
+	defer func() { _ = d.index.Close() }()
+
+	sessionID := d.createSession()
+
+	// Write entries with different file_refs and content.
+	entries := []store.Entry{
+		{ID: "e1", Timestamp: time.Date(2026, 1, 15, 1, 0, 0, 0, time.UTC), SessionID: sessionID, Type: store.EntryTypeDecision, Title: "Use Redis for caching", Body: "Sub-ms reads.", FileRefs: []string{"config/redis.yaml"}},
+		{ID: "e2", Timestamp: time.Date(2026, 1, 15, 2, 0, 0, 0, time.UTC), SessionID: sessionID, Type: store.EntryTypeDecision, Title: "Use PostgreSQL for persistence", Body: "ACID compliance.", FileRefs: []string{"config/db.yaml"}},
+		{ID: "e3", Timestamp: time.Date(2026, 1, 15, 3, 0, 0, 0, time.UTC), SessionID: sessionID, Type: store.EntryTypeAssumption, Title: "Auth tokens expire in 1h", Body: "Redis stores session tokens.", FileRefs: []string{"internal/auth/token.go", "config/redis.yaml"}},
+	}
+	for _, e := range entries {
+		if err := d.store.Append(e); err != nil {
+			t.Fatalf("append: %v", err)
+		}
+		if err := d.index.Insert(e); err != nil {
+			t.Fatalf("insert: %v", err)
+		}
+	}
+
+	// Context by files only.
+	params, _ := json.Marshal(ContextParams{Files: []string{"config/redis.yaml"}})
+	resp := d.handleRequest(Request{Method: "context", Params: params})
+	if !resp.OK {
+		t.Fatalf("context by files failed: %s", resp.Error)
+	}
+	var result []store.Entry
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if len(result) != 2 {
+		t.Fatalf("expected 2 entries for redis.yaml, got %d", len(result))
+	}
+
+	// Context by topic only.
+	params, _ = json.Marshal(ContextParams{Topic: "PostgreSQL"})
+	resp = d.handleRequest(Request{Method: "context", Params: params})
+	if !resp.OK {
+		t.Fatalf("context by topic failed: %s", resp.Error)
+	}
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if len(result) != 1 {
+		t.Fatalf("expected 1 entry for PostgreSQL topic, got %d", len(result))
+	}
+	if result[0].ID != "e2" {
+		t.Errorf("expected e2, got %q", result[0].ID)
+	}
+
+	// Context with both files + topic (union, deduplicated).
+	params, _ = json.Marshal(ContextParams{Files: []string{"config/redis.yaml"}, Topic: "Redis"})
+	resp = d.handleRequest(Request{Method: "context", Params: params})
+	if !resp.OK {
+		t.Fatalf("context combined failed: %s", resp.Error)
+	}
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	// e1 and e3 from files, e1 and e3 from topic search (Redis in title/body) - deduplicated.
+	if len(result) < 2 {
+		t.Fatalf("expected at least 2 deduplicated entries, got %d", len(result))
+	}
+	// Check deduplication: no duplicate IDs.
+	seen := make(map[string]bool)
+	for _, e := range result {
+		if seen[e.ID] {
+			t.Errorf("duplicate entry ID: %s", e.ID)
+		}
+		seen[e.ID] = true
+	}
+
+	// Results should be sorted by timestamp descending.
+	for i := 1; i < len(result); i++ {
+		if result[i].Timestamp.After(result[i-1].Timestamp) {
+			t.Errorf("results not sorted by timestamp desc at index %d", i)
+		}
+	}
+
+	// Context with limit.
+	params, _ = json.Marshal(ContextParams{Files: []string{"config/redis.yaml"}, Limit: 1})
+	resp = d.handleRequest(Request{Method: "context", Params: params})
+	if !resp.OK {
+		t.Fatalf("context with limit failed: %s", resp.Error)
+	}
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if len(result) != 1 {
+		t.Fatalf("expected 1 entry with limit, got %d", len(result))
+	}
+
+	// Context with neither files nor topic should error.
+	params, _ = json.Marshal(ContextParams{})
+	resp = d.handleRequest(Request{Method: "context", Params: params})
+	if resp.OK {
+		t.Fatal("expected error for empty context params")
+	}
+	if resp.Error != "context requires at least one of files or topic" {
+		t.Errorf("unexpected error: %s", resp.Error)
 	}
 }
 

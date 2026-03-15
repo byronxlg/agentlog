@@ -28,6 +28,7 @@ func usage() {
 	fmt.Fprintln(os.Stderr, "  query         Full-text search across decision entries")
 	fmt.Fprintln(os.Stderr, "  show <id>     Show all entries in a session")
 	fmt.Fprintln(os.Stderr, "  blame <file>  Show decisions referencing a file")
+	fmt.Fprintln(os.Stderr, "  context       Get relevant decisions for LLM context")
 }
 
 func main() {
@@ -78,6 +79,13 @@ func main() {
 			os.Exit(1)
 		}
 		err = cli.Show(cli.ShowOptions{Dir: dir, SessionID: args[1]})
+	case "context":
+		ctxOpts, parseErr := cli.ParseContextArgs(dir, args[1:])
+		if parseErr != nil {
+			fmt.Fprintf(os.Stderr, "agentlog context: %s\n", parseErr)
+			os.Exit(1)
+		}
+		err = cli.Context(ctxOpts)
 	case "blame":
 		if len(args) < 2 {
 			fmt.Fprintln(os.Stderr, "Usage: agentlog blame [--verbose] <file>")
