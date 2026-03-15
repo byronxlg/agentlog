@@ -21,6 +21,14 @@ bin/
 .DS_Store
 Thumbs.db
 
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.pytest_cache/
+dist/
+
 # agentlog data (local runtime state)
 *.pid
 *.sock
