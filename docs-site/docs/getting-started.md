@@ -1,12 +1,28 @@
 # Getting Started
 
-## Prerequisites
-
-- Go 1.23+ (to build from source)
-
 ## Installation
 
-Build from source:
+### Homebrew (macOS/Linux)
+
+```bash
+brew install byronxlg/agentlog/agentlog
+```
+
+### Python SDK
+
+```bash
+pip install agentlog-sdk
+```
+
+### TypeScript SDK
+
+```bash
+npm install agentlog-sdk
+```
+
+### Build from source
+
+Requires Go 1.23+:
 
 ```bash
 git clone https://github.com/byronxlg/agentlog.git
