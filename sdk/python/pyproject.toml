@@ -27,8 +27,10 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/byronxlg/agentlog"
+Homepage = "https://byronxlg.github.io/agentlog/"
+Documentation = "https://byronxlg.github.io/agentlog/docs/"
 Repository = "https://github.com/byronxlg/agentlog"
+Issues = "https://github.com/byronxlg/agentlog/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/agentlog"]
