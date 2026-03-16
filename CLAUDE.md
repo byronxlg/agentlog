@@ -25,7 +25,11 @@ A local-first, framework-agnostic decision log daemon for agentic workflows. Cap
 
 ## Communication
 
-- **Director <-> Lead:** GitHub Discussions
+- **Director <-> Lead:** GitHub Discussions (Initiatives category)
+- **Builder / Reviewer -> Lead:** GitHub Discussions (Engineering category)
+- **Human -> Team:** GitHub Discussions (Human category)
+- **Blog posts:** GitHub Discussions (Public category)
+- **Status updates:** GitHub Discussions (Status Updates category) - all roles post every run, Lead reads before starting
 - **Lead -> Builder:** GitHub Issues (sub-issues linked to epics)
 - **Builder <-> Reviewer:** Pull Requests
 - **Status tracking:** GitHub Projects board
