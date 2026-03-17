@@ -14,7 +14,7 @@ This gives Claude awareness of past architectural decisions, design rationale, a
 
 ## Installation
 
-1. Ensure the agentlog daemon is running (`agentlog daemon start`).
+1. Ensure the agentlog daemon is running (`agentlog start`).
 
 2. Add the hook to your Claude Code settings. Edit `.claude/settings.json` (project-level) or `~/.claude/settings.json` (global):
 
@@ -54,7 +54,7 @@ chmod +x integrations/claude-code/session-start.sh
 
 ## Troubleshooting
 
-- **No context appearing:** Verify the daemon is running with `agentlog status`. Check that you have logged decisions with `agentlog list`.
+- **No context appearing:** Verify the daemon is running with `agentlog log`. Check that decisions have been logged (output should show entries, not an error).
 - **Hook not triggering:** Confirm `.claude/settings.json` is valid JSON and the script path is correct relative to your project root.
 - **Permission denied:** Run `chmod +x integrations/claude-code/session-start.sh`.
 - **agentlog not found:** Ensure `agentlog` is in your PATH. The hook silently exits if the binary is missing.
