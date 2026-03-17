@@ -29,6 +29,7 @@ func usage() {
 	fmt.Fprintln(os.Stderr, "  show <id>     Show all entries in a session")
 	fmt.Fprintln(os.Stderr, "  blame <file>  Show decisions referencing a file")
 	fmt.Fprintln(os.Stderr, "  context       Get relevant decisions for LLM context")
+	fmt.Fprintln(os.Stderr, "  export        Export formatted decision log output")
 }
 
 func main() {
@@ -86,6 +87,13 @@ func main() {
 			os.Exit(1)
 		}
 		err = cli.Context(ctxOpts)
+	case "export":
+		exportOpts, parseErr := cli.ParseExportArgs(dir, args[1:])
+		if parseErr != nil {
+			fmt.Fprintf(os.Stderr, "agentlog export: %s\n", parseErr)
+			os.Exit(1)
+		}
+		err = cli.Export(exportOpts)
 	case "blame":
 		if len(args) < 2 {
 			fmt.Fprintln(os.Stderr, "Usage: agentlog blame [--verbose] <file>")

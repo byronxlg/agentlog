@@ -66,6 +66,18 @@ type ContextParams struct {
 	Limit int      `json:"limit,omitempty"`
 }
 
+// ExportParams holds the parameters for an "export" request.
+type ExportParams struct {
+	SessionID string `json:"session_id,omitempty"`
+	Since     string `json:"since,omitempty"`
+	Until     string `json:"until,omitempty"`
+	FilePath  string `json:"file_path,omitempty"`
+	Tag       string `json:"tag,omitempty"`
+	Type      string `json:"type,omitempty"`
+	Format    string `json:"format,omitempty"`
+	Template  string `json:"template,omitempty"`
+}
+
 func okResponse(result any) Response {
 	data, err := json.Marshal(result)
 	if err != nil {
