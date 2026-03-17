@@ -1,11 +1,10 @@
 package cli
 
 import (
-	"context"
 	"encoding/json"
-	"net"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -103,34 +102,21 @@ func TestFormatContext_WithEntries(t *testing.T) {
 	if got == "" {
 		t.Fatal("expected non-empty output")
 	}
-	if !contains(got, "# Relevant decisions") {
+	if !strings.Contains(got, "# Relevant decisions") {
 		t.Error("missing header")
 	}
-	if !contains(got, "[decision] Use Redis") {
+	if !strings.Contains(got, "[decision] Use Redis") {
 		t.Error("missing entry header")
 	}
-	if !contains(got, "Fast caching layer.") {
+	if !strings.Contains(got, "Fast caching layer.") {
 		t.Error("missing body")
 	}
-	if !contains(got, "Files: config/redis.yaml") {
+	if !strings.Contains(got, "Files: config/redis.yaml") {
 		t.Error("missing file refs")
 	}
-	if !contains(got, "Tags: infrastructure") {
+	if !strings.Contains(got, "Tags: infrastructure") {
 		t.Error("missing tags")
 	}
-}
-
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || s != "" && containsStr(s, substr))
-}
-
-func containsStr(s, substr string) bool {
-	for i := 0; i+len(substr) <= len(s); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
 }
 
 func TestContext_Integration(t *testing.T) {
@@ -146,12 +132,11 @@ func TestContext_Integration(t *testing.T) {
 	}
 
 	// Write entries with file_refs.
-	for i, e := range []daemon.EntryParams{
+	for _, e := range []daemon.EntryParams{
 		{SessionID: sid, Type: "decision", Title: "Use Redis for caching", Body: "Sub-ms reads.", FileRefs: []string{"config/redis.yaml"}, Tags: []string{"infra"}},
 		{SessionID: sid, Type: "decision", Title: "Use PostgreSQL for persistence", Body: "ACID compliance.", FileRefs: []string{"config/db.yaml"}, Tags: []string{"infra"}},
 		{SessionID: sid, Type: "assumption", Title: "Auth tokens expire in 1h", Body: "Token TTL assumption.", FileRefs: []string{"internal/auth/token.go"}, Tags: []string{"auth"}},
 	} {
-		_ = i
 		params, _ := json.Marshal(daemon.WriteParams{Entry: e})
 		req := daemon.Request{Method: "write", Params: params}
 		resp, connErr := SendRequest(socketPath, req)
@@ -177,7 +162,7 @@ func TestContext_Integration(t *testing.T) {
 	var buf [4096]byte
 	n, _ := r.Read(buf[:])
 	output := string(buf[:n])
-	if !containsStr(output, "Use Redis") {
+	if !strings.Contains(output, "Use Redis") {
 		t.Errorf("expected output to contain 'Use Redis', got: %s", output)
 	}
 
@@ -193,17 +178,7 @@ func TestContext_Integration(t *testing.T) {
 	}
 	n, _ = r2.Read(buf[:])
 	output = string(buf[:n])
-	if !containsStr(output, "PostgreSQL") {
+	if !strings.Contains(output, "PostgreSQL") {
 		t.Errorf("expected output to contain 'PostgreSQL', got: %s", output)
 	}
 }
-
-// shortTempDir and startTestDaemon are defined in write_test.go.
-// We reuse them here since they're in the same package.
-// If they're not available, the build will fail and we know to check.
-// Actually, they ARE available since this is the same package.
-
-// Ensure we import the right packages for the daemon setup.
-var _ = context.Background
-var _ = net.Dial
-var _ = time.Now
