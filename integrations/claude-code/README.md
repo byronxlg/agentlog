@@ -22,6 +22,26 @@ The hook tracks state across turns using `CLAUDE_SESSION_ID`:
 
 ## Installation
 
+### Automated (recommended)
+
+Run the install script from your project root:
+
+```bash
+bash integrations/claude-code/install.sh
+```
+
+This copies both hook scripts to `.claude/hooks/`, creates or patches `.claude/settings.json` with the hook configuration, and makes the scripts executable.
+
+For global installation (applies to all projects):
+
+```bash
+bash integrations/claude-code/install.sh --global
+```
+
+Requires `jq` for JSON manipulation. Install with `brew install jq` (macOS) or `apt-get install jq` (Linux).
+
+### Manual
+
 1. Ensure the agentlog daemon is running (`agentlog start`).
 
 2. Add the hooks to your Claude Code settings. Edit `.claude/settings.json` (project-level) or `~/.claude/settings.json` (global):
@@ -86,3 +106,98 @@ chmod +x integrations/claude-code/session-start.sh integrations/claude-code/deci
 - **agentlog not found:** Ensure `agentlog` is in your PATH. Both hooks silently exit if the binary is missing.
 - **Debug session-start:** Run the script directly from your project root to see its output: `bash integrations/claude-code/session-start.sh`.
 - **Debug decision-write:** Check for snapshot files in `/tmp/agentlog-decisions/` to verify state tracking is working.
+
+## End-to-end walkthrough
+
+This walkthrough goes from a fresh install to a working Claude Code session with context injection and decision capture.
+
+### 1. Install agentlog
+
+```bash
+brew install byronxlg/agentlog/agentlog
+```
+
+Or build from source:
+
+```bash
+git clone https://github.com/byronxlg/agentlog.git
+cd agentlog && make build
+export PATH="$PWD/bin:$PATH"
+```
+
+### 2. Start the daemon
+
+```bash
+agentlog start
+```
+
+Verify it is running:
+
+```bash
+agentlog log
+# Expected: "no entries found" (empty log is fine)
+```
+
+### 3. Set up hooks in your project
+
+Navigate to the project where you use Claude Code, then run the install script:
+
+```bash
+cd /path/to/your-project
+bash /path/to/agentlog/integrations/claude-code/install.sh
+```
+
+This creates `.claude/hooks/session-start.sh`, `.claude/hooks/decision-write.sh`, and patches `.claude/settings.json`.
+
+### 4. Seed some decisions (optional)
+
+If this is a new install, there are no past decisions to inject yet. You can seed a few to verify context injection works:
+
+```bash
+agentlog write --type decision \
+  --title "Use React for the frontend" \
+  --body "Considered Vue and Svelte. React chosen for team familiarity." \
+  --tags "architecture,frontend" \
+  --files "src/App.tsx"
+```
+
+### 5. Start a Claude Code session
+
+```bash
+claude
+```
+
+On your first prompt, the session-start hook runs and queries the daemon. If there are decisions related to your working files, they appear as context in the conversation.
+
+### 6. Verify context injection
+
+After sending your first prompt, check that Claude received context. If you seeded decisions in step 4 and have `src/App.tsx` in your git working set, the decision about React should appear in the conversation context.
+
+You can also run the hook manually to see its output:
+
+```bash
+bash .claude/hooks/session-start.sh
+```
+
+### 7. Verify decision capture
+
+After Claude makes some file changes in the session, the decision-write hook runs automatically. Verify captured decisions:
+
+```bash
+agentlog log --tag claude-code
+```
+
+You should see entries for the files Claude modified, tagged with `claude-code`.
+
+### 8. Query decisions later
+
+```bash
+# Full-text search
+agentlog query "React"
+
+# Decisions affecting a specific file
+agentlog blame src/App.tsx
+
+# Context API (same as what the hook uses)
+agentlog context --files src/App.tsx --limit 5
+```
