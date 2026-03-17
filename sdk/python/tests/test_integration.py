@@ -106,17 +106,51 @@ class TestIntegrationLog:
 class TestIntegrationContext:
     """Integration tests for the context() method."""
 
-    def test_context_returns_formatted_string(self, client: AgentlogClient) -> None:
-        """context() should return a non-empty formatted string."""
+    def test_context_with_topic(self, client: AgentlogClient) -> None:
+        """context(topic=...) should return matching entries."""
         client.write(
             type="decision",
-            title="Integration test: context formatting",
-            body="This is a test body for context output.",
+            title="Integration test: context topic search",
+            body="This entry tests topic-based context retrieval.",
+            tags=["integration-test"],
         )
 
-        result = client.context(session=client.session_id)
+        result = client.context(topic="context topic search")
         assert "# Recent decisions" in result
-        assert "context formatting" in result
+        assert "context topic search" in result
+
+    def test_context_with_files(self, client: AgentlogClient) -> None:
+        """context(files=...) should return entries related to those files."""
+        client.write(
+            type="decision",
+            title="Integration test: context file lookup",
+            body="This entry tests file-based context retrieval.",
+            files=["sdk/python/tests/test_integration.py"],
+        )
+
+        result = client.context(files=["sdk/python/tests/test_integration.py"])
+        assert "# Recent decisions" in result
+        assert "context file lookup" in result
+
+    def test_context_with_files_and_topic(self, client: AgentlogClient) -> None:
+        """context(files=..., topic=...) should combine both criteria."""
+        client.write(
+            type="decision",
+            title="Integration test: context combined",
+            body="This entry tests combined context retrieval.",
+            files=["internal/combined_test.go"],
+        )
+
+        result = client.context(
+            files=["internal/combined_test.go"],
+            topic="context combined",
+        )
+        assert "# Recent decisions" in result
+
+    def test_context_empty_result(self, client: AgentlogClient) -> None:
+        """context() with no matching topic should return no entries."""
+        result = client.context(topic="xyzzy_nonexistent_topic_12345")
+        assert "No entries found" in result
 
 
 class TestIntegrationModuleFunctions:

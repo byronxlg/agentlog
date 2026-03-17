@@ -538,6 +538,78 @@ class TestContextFormatting:
 
 
 # ---------------------------------------------------------------------------
+# Context daemon call tests
+# ---------------------------------------------------------------------------
+
+class TestContextDaemonCall:
+    """Tests for context() sending requests to the daemon context method."""
+
+    def test_context_with_files(self, sock_path: str) -> None:
+        with FakeDaemon(sock_path) as daemon:
+            daemon.set_response([{
+                "id": "entry-1",
+                "timestamp": "2026-03-15T10:30:00Z",
+                "type": "decision",
+                "title": "Use Redis",
+                "file_refs": ["config/redis.yaml"],
+            }])
+            client = AgentlogClient(socket_path=sock_path)
+            result = client.context(files=["config/redis.yaml"])
+
+            req = daemon.last_request
+            assert req["method"] == "context"
+            assert req["params"]["files"] == ["config/redis.yaml"]
+            assert "topic" not in req["params"]
+            assert "# Recent decisions" in result
+
+    def test_context_with_topic(self, sock_path: str) -> None:
+        with FakeDaemon(sock_path) as daemon:
+            daemon.set_response([{
+                "id": "entry-1",
+                "timestamp": "2026-03-15T10:30:00Z",
+                "type": "decision",
+                "title": "Use JWT for auth",
+            }])
+            client = AgentlogClient(socket_path=sock_path)
+            result = client.context(topic="authentication")
+
+            req = daemon.last_request
+            assert req["method"] == "context"
+            assert req["params"]["topic"] == "authentication"
+            assert "files" not in req["params"]
+            assert "Use JWT for auth" in result
+
+    def test_context_with_files_and_topic(self, sock_path: str) -> None:
+        with FakeDaemon(sock_path) as daemon:
+            daemon.set_response([])
+            client = AgentlogClient(socket_path=sock_path)
+            client.context(files=["main.go"], topic="auth")
+
+            req = daemon.last_request
+            assert req["method"] == "context"
+            assert req["params"]["files"] == ["main.go"]
+            assert req["params"]["topic"] == "auth"
+
+    def test_context_with_limit(self, sock_path: str) -> None:
+        with FakeDaemon(sock_path) as daemon:
+            daemon.set_response([])
+            client = AgentlogClient(socket_path=sock_path)
+            client.context(topic="test", limit=5)
+
+            req = daemon.last_request
+            assert req["method"] == "context"
+            assert req["params"]["limit"] == 5
+
+    def test_context_empty_result(self, sock_path: str) -> None:
+        with FakeDaemon(sock_path) as daemon:
+            daemon.set_response([])
+            client = AgentlogClient(socket_path=sock_path)
+            result = client.context(topic="nonexistent")
+
+            assert "No entries found" in result
+
+
+# ---------------------------------------------------------------------------
 # Client-side filtering tests
 # ---------------------------------------------------------------------------
 

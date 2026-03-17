@@ -72,8 +72,18 @@ entries = agentlog.log(since="1h")
 ### Getting context for prompts
 
 ```python
-# Get a formatted text block for prompt injection
-context = agentlog.context(query="authentication")
+# Get context by topic
+context = agentlog.context(topic="authentication")
+
+# Get context by file paths
+context = agentlog.context(files=["internal/auth/jwt.go"])
+
+# Combine both
+context = agentlog.context(files=["internal/auth/jwt.go"], topic="authentication")
+
+# Limit results
+context = agentlog.context(topic="caching", limit=5)
+
 print(context)
 # Output:
 # # Recent decisions
