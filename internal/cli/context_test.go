@@ -121,7 +121,7 @@ func TestFormatContext_WithEntries(t *testing.T) {
 }
 
 func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsStr(s, substr))
+	return len(s) >= len(substr) && (s == substr || s != "" && containsStr(s, substr))
 }
 
 func containsStr(s, substr string) bool {
