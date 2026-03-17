@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"encoding/json"
+	"sort"
 	"time"
 
 	"github.com/google/uuid"
@@ -25,6 +26,8 @@ func (d *Daemon) handleRequest(req Request) Response {
 		return d.handleCreateSession()
 	case "blame":
 		return d.handleBlame(req.Params)
+	case "context":
+		return d.handleContext(req.Params)
 	default:
 		return errResponse("unknown method: " + req.Method)
 	}
@@ -191,5 +194,59 @@ func (d *Daemon) handleBlame(params json.RawMessage) Response {
 	if err != nil {
 		return errResponse("blame failed: " + err.Error())
 	}
+	return okResponse(entries)
+}
+
+func (d *Daemon) handleContext(params json.RawMessage) Response {
+	var p ContextParams
+	if err := json.Unmarshal(params, &p); err != nil {
+		return errResponse("invalid context params: " + err.Error())
+	}
+	if len(p.Files) == 0 && p.Topic == "" {
+		return errResponse("context requires at least one of files or topic")
+	}
+
+	limit := p.Limit
+	if limit <= 0 {
+		limit = 10
+	}
+
+	seen := make(map[string]bool)
+	var entries []store.Entry
+
+	for _, f := range p.Files {
+		results, err := d.index.QueryByFilePath(f)
+		if err != nil {
+			return errResponse("context file lookup failed: " + err.Error())
+		}
+		for _, e := range results {
+			if !seen[e.ID] {
+				seen[e.ID] = true
+				entries = append(entries, e)
+			}
+		}
+	}
+
+	if p.Topic != "" {
+		results, err := d.index.Search(p.Topic)
+		if err != nil {
+			return errResponse("context topic search failed: " + err.Error())
+		}
+		for _, e := range results {
+			if !seen[e.ID] {
+				seen[e.ID] = true
+				entries = append(entries, e)
+			}
+		}
+	}
+
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].Timestamp.After(entries[j].Timestamp)
+	})
+
+	if len(entries) > limit {
+		entries = entries[:limit]
+	}
+
 	return okResponse(entries)
 }

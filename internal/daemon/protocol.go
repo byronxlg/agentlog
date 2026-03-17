@@ -59,6 +59,13 @@ type BlameParams struct {
 	FilePath string `json:"file_path"`
 }
 
+// ContextParams holds the parameters for a "context" request.
+type ContextParams struct {
+	Files []string `json:"files,omitempty"`
+	Topic string   `json:"topic,omitempty"`
+	Limit int      `json:"limit,omitempty"`
+}
+
 func okResponse(result any) Response {
 	data, err := json.Marshal(result)
 	if err != nil {
