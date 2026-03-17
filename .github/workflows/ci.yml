@@ -25,6 +25,11 @@ jobs:
       - name: Test
         run: make test
 
+      - name: Verify installed hooks match source
+        run: |
+          diff integrations/claude-code/session-start.sh .claude/hooks/session-start.sh
+          diff integrations/claude-code/decision-write.sh .claude/hooks/decision-write.sh
+
   lint:
     runs-on: ubuntu-latest
     steps:
