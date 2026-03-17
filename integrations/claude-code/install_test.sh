@@ -176,11 +176,11 @@ JSON
         fail "preserves existing settings keys" "settings: $settings"
     fi
 
-    # Hooks should be added
-    if echo "$settings" | jq -e '.hooks.UserPromptSubmit' &>/dev/null; then
-        pass "adds hooks to existing settings"
+    # Hooks should be added - verify both exist in a single JSON object
+    if echo "$settings" | jq -e 'select(.hooks.UserPromptSubmit and .hooks.Stop)' &>/dev/null; then
+        pass "adds both hooks to existing settings"
     else
-        fail "adds hooks to existing settings" "settings: $settings"
+        fail "adds both hooks to existing settings" "settings: $settings"
     fi
 }
 

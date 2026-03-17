@@ -130,12 +130,9 @@ if [[ -f "$settings_file" ]]; then
 
     merged=$(echo "$existing" | jq --argjson new "$hooks_json" '
         # For each hook event in $new.hooks, append entries to existing arrays
-        .hooks = (
-            (.hooks // {}) as $old |
-            ($new.hooks | keys[]) as $event |
-            $old * {
-                ($event): (($old[$event] // []) + $new.hooks[$event])
-            }
+        .hooks = reduce ($new.hooks | keys[]) as $event (
+            (.hooks // {});
+            . + { ($event): (.[$event] // []) + $new.hooks[$event] }
         )
     ')
 
