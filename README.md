@@ -96,6 +96,7 @@ agentlog stop
 | `agentlog query <text>` | Full-text search across decision entries |
 | `agentlog show <session>` | Show all entries in a session (supports prefix matching) |
 | `agentlog blame <file>` | Show decisions referencing a file |
+| `agentlog context` | Get relevant decisions formatted for LLM context (`--files`, `--topic`, `--limit`) |
 
 All commands accept `--dir <path>` to override the data directory (default: `~/.agentlog`).
 
@@ -133,12 +134,37 @@ See [sdk/python/README.md](sdk/python/README.md) for the full SDK documentation.
 
 ## Claude Code integration
 
-agentlog integrates with Claude Code to automatically log decisions during coding sessions. Two approaches are supported:
+agentlog ships with two hooks that automate decision logging in Claude Code sessions:
 
-1. **CLAUDE.md instructions** - Add a snippet to your CLAUDE.md that tells Claude to log decisions via the CLI
-2. **Hook scripts** - Auto-log file modifications using Claude Code's hook system
+- **Context injection** (`session-start.sh`) - On the first prompt of each session, queries the daemon for decisions relevant to your current working set of files and injects them as context
+- **Decision capture** (`decision-write.sh`) - After each Claude Code response, detects newly modified files and logs them as decisions automatically
 
-See [docs/claude-code.md](docs/claude-code.md) for the full integration guide and examples.
+### Quick setup
+
+Run the install script from your project root:
+
+```bash
+bash integrations/claude-code/install.sh
+```
+
+This copies the hooks into `.claude/hooks/` and configures `.claude/settings.json`. For global installation (all projects), add `--global`.
+
+### Manual setup
+
+See [integrations/claude-code/README.md](integrations/claude-code/README.md) for manual configuration, environment variables, and troubleshooting.
+
+### Context API
+
+The `agentlog context` command powers the session-start hook. It returns decisions formatted as markdown, filtered by files or topic:
+
+```bash
+agentlog context --files src/index.go --files internal/store.go --limit 10
+agentlog context --topic my-project
+```
+
+SDKs also expose a `context()` method for programmatic access.
+
+See [docs/claude-code.md](docs/claude-code.md) for the full integration guide, CLAUDE.md snippets, and examples.
 
 ## TypeScript SDK
 
