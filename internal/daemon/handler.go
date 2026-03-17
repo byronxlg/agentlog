@@ -28,6 +28,8 @@ func (d *Daemon) handleRequest(req Request) Response {
 		return d.handleBlame(req.Params)
 	case "context":
 		return d.handleContext(req.Params)
+	case "export":
+		return d.handleExport(req.Params)
 	default:
 		return errResponse("unknown method: " + req.Method)
 	}
