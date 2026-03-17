@@ -106,12 +106,12 @@ def log(
 
 
 def context(
-    query: str | None = None,
-    session: str | None = None,
-    limit: int = 10,
+    files: list[str] | None = None,
+    topic: str | None = None,
+    limit: int | None = None,
 ) -> str:
     """Return a structured context string suitable for prompt injection.
 
     Convenience wrapper around :meth:`AgentlogClient.context`.
     """
-    return _get_default_client().context(query=query, session=session, limit=limit)
+    return _get_default_client().context(files=files, topic=topic, limit=limit)

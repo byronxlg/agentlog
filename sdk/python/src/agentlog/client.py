@@ -345,31 +345,34 @@ class AgentlogClient:
 
     def context(
         self,
-        query: Optional[str] = None,
-        session: Optional[str] = None,
-        limit: int = 10,
+        files: Optional[list[str]] = None,
+        topic: Optional[str] = None,
+        limit: Optional[int] = None,
     ) -> str:
         """Return a structured context string suitable for prompt injection.
 
-        Fetches entries via search or session query and formats them as a
+        Calls the daemon's ``context`` protocol method to retrieve entries
+        relevant to the given files and/or topic, then formats them as a
         readable text block.
 
         Args:
-            query: Optional search query for full-text search.
-            session: Optional session ID to fetch entries from.
+            files: Optional list of file paths to find relevant decisions for.
+            topic: Optional search topic for full-text search.
             limit: Maximum number of entries to include.
 
         Returns:
             A formatted string with entry summaries.
         """
-        if query:
-            entries = self.query(query, limit=limit)
-        elif session:
-            result = self._send("get_session", {"session_id": session})
-            entries = result if isinstance(result, list) else []
-            entries = entries[:limit]
-        else:
-            entries = self.log(limit=limit)
+        params: dict[str, Any] = {}
+        if files is not None and len(files) > 0:
+            params["files"] = files
+        if topic is not None:
+            params["topic"] = topic
+        if limit is not None:
+            params["limit"] = limit
+
+        result = self._send("context", params)
+        entries: list[dict[str, Any]] = result if isinstance(result, list) else []
 
         return self._format_context(entries)
 
