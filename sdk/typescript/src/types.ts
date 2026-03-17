@@ -71,10 +71,10 @@ export interface LogOptions {
 
 /** Options for context retrieval. */
 export interface ContextOptions {
-  /** Optional search query for full-text search. */
-  query?: string;
-  /** Optional session ID to fetch entries from. */
-  session?: string;
+  /** File paths to find relevant decisions for. */
+  files?: string[];
+  /** Search topic for full-text search. */
+  topic?: string;
   /** Maximum number of entries to include. Defaults to 10. */
   limit?: number;
 }

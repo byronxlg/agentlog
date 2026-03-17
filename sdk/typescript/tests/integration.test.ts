@@ -123,17 +123,33 @@ describeIfDaemon("integration: log", () => {
 });
 
 describeIfDaemon("integration: context", () => {
-  it("returns formatted context string", async () => {
+  it("retrieves context by file refs", async () => {
     const client = new AgentlogClient();
 
     await client.write({
       type: "decision",
-      title: "Integration test: context formatting",
-      body: "This is a test body for context output.",
+      title: "Integration test: context by files",
+      body: "Testing file-based context retrieval.",
+      files: ["integration/context-test.go"],
     });
 
-    const result = await client.context({ session: client.sessionId! });
+    const result = await client.context({
+      files: ["integration/context-test.go"],
+    });
     expect(result).toContain("# Recent decisions");
-    expect(result).toContain("context formatting");
+    expect(result).toContain("context by files");
+  });
+
+  it("retrieves context by topic", async () => {
+    const client = new AgentlogClient();
+
+    await client.write({
+      type: "decision",
+      title: "Integration test: context topic retrieval",
+      body: "Testing topic-based context lookup.",
+    });
+
+    const result = await client.context({ topic: "context topic retrieval" });
+    expect(result).toContain("context topic retrieval");
   });
 });

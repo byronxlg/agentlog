@@ -75,8 +75,8 @@ const recentEntries = await client.log({ since: "1h" });
 ### Getting context for prompts
 
 ```typescript
-// Get a formatted text block for prompt injection
-const context = await client.context({ query: "authentication" });
+// Get context by file paths - find decisions relevant to files you're working on
+const context = await client.context({ files: ["internal/auth/jwt.go"] });
 console.log(context);
 // Output:
 // # Recent decisions
@@ -85,6 +85,16 @@ console.log(context);
 // JWTs are stateless and work well with our microservices architecture.
 // Tags: auth, api
 // Files: internal/auth/jwt.go
+
+// Get context by topic
+const topicContext = await client.context({ topic: "authentication" });
+
+// Combine files and topic for broader context
+const combined = await client.context({
+  files: ["internal/auth/jwt.go", "config/auth.yaml"],
+  topic: "session tokens",
+  limit: 5,
+});
 ```
 
 ### Configuration
