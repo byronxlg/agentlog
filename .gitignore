@@ -39,3 +39,6 @@ docs-site/site/
 # Claude
 .claude/worktrees/*
 .claude/scheduled_tasks.lock
+
+# Other
+.tmux-session.sh
