@@ -833,7 +833,7 @@ describe("log method", () => {
 // ---------------------------------------------------------------------------
 
 describe("context method", () => {
-  it("uses search when query is provided", async () => {
+  it("calls daemon context method with files", async () => {
     const daemon = new FakeDaemon(sockPath);
     daemon.setResponse([
       {
@@ -841,56 +841,108 @@ describe("context method", () => {
         timestamp: "2026-03-15T10:00:00Z",
         session_id: "s1",
         type: "decision",
-        title: "Found entry",
+        title: "Redis decision",
+        file_refs: ["config/redis.yaml"],
       },
     ]);
     await daemon.start();
 
     try {
       const client = new AgentlogClient({ socketPath: sockPath });
-      const result = await client.context({ query: "test" });
+      const result = await client.context({ files: ["config/redis.yaml"] });
 
-      expect(daemon.lastRequest!.method).toBe("search");
-      expect(result).toContain("Found entry");
+      expect(daemon.lastRequest!.method).toBe("context");
+      expect(
+        (daemon.lastRequest!.params as Record<string, unknown>).files
+      ).toEqual(["config/redis.yaml"]);
+      expect(result).toContain("Redis decision");
     } finally {
       await daemon.stop();
     }
   });
 
-  it("uses get_session when session is provided", async () => {
+  it("calls daemon context method with topic", async () => {
     const daemon = new FakeDaemon(sockPath);
     daemon.setResponse([
       {
         id: "e1",
         timestamp: "2026-03-15T10:00:00Z",
-        session_id: "sess-1",
+        session_id: "s1",
         type: "decision",
-        title: "Session entry",
+        title: "Auth decision",
       },
     ]);
     await daemon.start();
 
     try {
       const client = new AgentlogClient({ socketPath: sockPath });
-      const result = await client.context({ session: "sess-1" });
+      const result = await client.context({ topic: "authentication" });
 
-      expect(daemon.lastRequest!.method).toBe("get_session");
-      expect(result).toContain("Session entry");
+      expect(daemon.lastRequest!.method).toBe("context");
+      expect(
+        (daemon.lastRequest!.params as Record<string, unknown>).topic
+      ).toBe("authentication");
+      expect(result).toContain("Auth decision");
     } finally {
       await daemon.stop();
     }
   });
 
-  it("falls back to log when no options provided", async () => {
+  it("passes both files and topic to daemon", async () => {
+    const daemon = new FakeDaemon(sockPath);
+    daemon.setResponse([
+      {
+        id: "e1",
+        timestamp: "2026-03-15T10:00:00Z",
+        session_id: "s1",
+        type: "decision",
+        title: "Combined result",
+      },
+    ]);
+    await daemon.start();
+
+    try {
+      const client = new AgentlogClient({ socketPath: sockPath });
+      const result = await client.context({
+        files: ["main.go"],
+        topic: "caching",
+      });
+
+      const params = daemon.lastRequest!.params as Record<string, unknown>;
+      expect(daemon.lastRequest!.method).toBe("context");
+      expect(params.files).toEqual(["main.go"]);
+      expect(params.topic).toBe("caching");
+      expect(result).toContain("Combined result");
+    } finally {
+      await daemon.stop();
+    }
+  });
+
+  it("passes limit to daemon", async () => {
     const daemon = new FakeDaemon(sockPath);
     daemon.setResponse([]);
     await daemon.start();
 
     try {
       const client = new AgentlogClient({ socketPath: sockPath });
-      const result = await client.context();
+      await client.context({ topic: "test", limit: 5 });
 
-      expect(daemon.lastRequest!.method).toBe("query");
+      const params = daemon.lastRequest!.params as Record<string, unknown>;
+      expect(params.limit).toBe(5);
+    } finally {
+      await daemon.stop();
+    }
+  });
+
+  it("returns formatted context string", async () => {
+    const daemon = new FakeDaemon(sockPath);
+    daemon.setResponse([]);
+    await daemon.start();
+
+    try {
+      const client = new AgentlogClient({ socketPath: sockPath });
+      const result = await client.context({ topic: "nonexistent" });
+
       expect(result).toContain("No entries found");
     } finally {
       await daemon.stop();

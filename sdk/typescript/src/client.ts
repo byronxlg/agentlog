@@ -355,28 +355,30 @@ export class AgentlogClient {
   /**
    * Return a structured context string suitable for prompt injection.
    *
-   * Fetches entries via search or session query and formats them as a
-   * readable text block.
+   * Calls the daemon's `context` method to fetch entries by file paths
+   * and/or topic, then formats them as a readable text block.
+   *
+   * At least one of `files` or `topic` must be provided.
    *
    * @param options - Context retrieval parameters.
    * @returns A formatted string with entry summaries.
    */
   async context(options: ContextOptions = {}): Promise<string> {
-    const { query, session, limit = 10 } = options;
+    const { files, topic, limit } = options;
 
-    let entries: Entry[];
-
-    if (query) {
-      entries = await this.query({ text: query, limit });
-    } else if (session) {
-      const result = await this._send("get_session", {
-        session_id: session,
-      });
-      entries = Array.isArray(result) ? (result as Entry[]) : [];
-      entries = entries.slice(0, limit);
-    } else {
-      entries = await this.log({ limit });
+    const params: Record<string, unknown> = {};
+    if (files != null && files.length > 0) {
+      params.files = files;
     }
+    if (topic != null) {
+      params.topic = topic;
+    }
+    if (limit != null) {
+      params.limit = limit;
+    }
+
+    const result = await this._send("context", params);
+    const entries: Entry[] = Array.isArray(result) ? result : [];
 
     return AgentlogClient._formatContext(entries);
   }
