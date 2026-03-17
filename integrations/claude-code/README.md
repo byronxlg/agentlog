@@ -42,7 +42,7 @@ chmod +x integrations/claude-code/session-start.sh
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `CLAUDE_SESSION_ID` | (set by Claude Code) | The current session ID |
+| `CLAUDE_SESSION_ID` | (set by Claude Code) | Used to run the query only once per session. If set, a marker file is written to `/tmp` so subsequent prompts skip the daemon query. |
 | `AGENTLOG_LIMIT` | `10` | Maximum number of decision entries to retrieve |
 | `AGENTLOG_TOPIC` | repo or directory name | Override the fallback topic when no files are detected |
 

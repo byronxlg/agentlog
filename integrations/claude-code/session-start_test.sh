@@ -444,6 +444,143 @@ MOCK
     fi
 }
 
+test_agentlog_topic_override_in_git_repo() {
+    local tmpdir
+    tmpdir="$(make_tmpdir)"
+
+    # Create a git repo - normally the repo name would be used as fallback topic
+    git -C "$tmpdir" init -q
+    git -C "$tmpdir" config user.email "test@test.com"
+    git -C "$tmpdir" config user.name "Test"
+    echo "a" > "$tmpdir/file.txt"
+    git -C "$tmpdir" add file.txt
+    git -C "$tmpdir" commit -q -m "initial"
+
+    # No modified/staged files, so the script falls back to --topic.
+    # With AGENTLOG_TOPIC set, it should use that instead of the repo name.
+
+    local mockdir
+    mockdir="$(make_tmpdir)"
+    cat > "$mockdir/agentlog" <<'MOCK'
+#!/usr/bin/env bash
+echo "$@" > "${AGENTLOG_TEST_ARGFILE}"
+echo "No relevant decisions found."
+MOCK
+    chmod +x "$mockdir/agentlog"
+
+    local argfile="$tmpdir/captured_args.txt"
+    output=$(cd "$tmpdir" && AGENTLOG_TOPIC="custom-topic" AGENTLOG_TEST_ARGFILE="$argfile" PATH="$mockdir:/usr/bin:/bin" bash "$HOOK_SCRIPT" 2>&1)
+
+    if [[ -f "$argfile" ]]; then
+        local args
+        args="$(cat "$argfile")"
+        if echo "$args" | grep -q -- "--topic custom-topic"; then
+            pass "AGENTLOG_TOPIC overrides repo name in git repo"
+        else
+            fail "AGENTLOG_TOPIC overrides repo name in git repo" "args were: $args"
+        fi
+    else
+        fail "AGENTLOG_TOPIC overrides repo name in git repo" "agentlog was not called"
+    fi
+}
+
+test_skips_query_on_second_run_in_same_session() {
+    local tmpdir
+    tmpdir="$(make_tmpdir)"
+
+    git -C "$tmpdir" init -q
+    git -C "$tmpdir" config user.email "test@test.com"
+    git -C "$tmpdir" config user.name "Test"
+    echo "a" > "$tmpdir/file.txt"
+    git -C "$tmpdir" add file.txt
+    git -C "$tmpdir" commit -q -m "initial"
+    echo "modified" > "$tmpdir/file.txt"
+
+    local mockdir
+    mockdir="$(make_tmpdir)"
+    local call_count_file="$tmpdir/call_count"
+    echo "0" > "$call_count_file"
+    cat > "$mockdir/agentlog" <<MOCK
+#!/usr/bin/env bash
+count=\$(cat "$call_count_file")
+echo \$((count + 1)) > "$call_count_file"
+echo "# Relevant decisions"
+MOCK
+    chmod +x "$mockdir/agentlog"
+
+    local session_id="test-session-$$"
+    # Clean up any stale marker from a prior run
+    rm -f "/tmp/agentlog-session-${session_id}"
+
+    # First invocation - should call agentlog and produce output
+    output1=$(cd "$tmpdir" && CLAUDE_SESSION_ID="$session_id" PATH="$mockdir:/usr/bin:/bin" bash "$HOOK_SCRIPT" 2>&1)
+
+    # Second invocation - should exit early due to marker file
+    output2=$(cd "$tmpdir" && CLAUDE_SESSION_ID="$session_id" PATH="$mockdir:/usr/bin:/bin" bash "$HOOK_SCRIPT" 2>&1)
+
+    local count
+    count="$(cat "$call_count_file")"
+
+    if [[ "$count" -eq 1 ]]; then
+        pass "agentlog called only once across two invocations with same session ID"
+    else
+        fail "agentlog called only once across two invocations with same session ID" "called $count times"
+    fi
+
+    if [[ -n "$output1" ]]; then
+        pass "first invocation produces output"
+    else
+        fail "first invocation produces output" "output was empty"
+    fi
+
+    if [[ -z "$output2" ]]; then
+        pass "second invocation produces no output (skipped)"
+    else
+        fail "second invocation produces no output (skipped)" "got output: $output2"
+    fi
+
+    # Clean up marker
+    rm -f "/tmp/agentlog-session-${session_id}"
+}
+
+test_runs_every_time_without_session_id() {
+    local tmpdir
+    tmpdir="$(make_tmpdir)"
+
+    git -C "$tmpdir" init -q
+    git -C "$tmpdir" config user.email "test@test.com"
+    git -C "$tmpdir" config user.name "Test"
+    echo "a" > "$tmpdir/file.txt"
+    git -C "$tmpdir" add file.txt
+    git -C "$tmpdir" commit -q -m "initial"
+    echo "modified" > "$tmpdir/file.txt"
+
+    local mockdir
+    mockdir="$(make_tmpdir)"
+    local call_count_file="$tmpdir/call_count"
+    echo "0" > "$call_count_file"
+    cat > "$mockdir/agentlog" <<MOCK
+#!/usr/bin/env bash
+count=\$(cat "$call_count_file")
+echo \$((count + 1)) > "$call_count_file"
+echo "# Relevant decisions"
+MOCK
+    chmod +x "$mockdir/agentlog"
+
+    # Two invocations without CLAUDE_SESSION_ID - both should call agentlog
+    output1=$(cd "$tmpdir" && PATH="$mockdir:/usr/bin:/bin" bash "$HOOK_SCRIPT" 2>&1)
+    output2=$(cd "$tmpdir" && PATH="$mockdir:/usr/bin:/bin" bash "$HOOK_SCRIPT" 2>&1)
+
+    local count
+    count="$(cat "$call_count_file")"
+
+    if [[ "$count" -eq 2 ]]; then
+        pass "agentlog called on every invocation when CLAUDE_SESSION_ID is not set"
+    else
+        fail "agentlog called on every invocation when CLAUDE_SESSION_ID is not set" "called $count times"
+    fi
+}
+
 # -- Run all tests --
 
 printf "=== session-start.sh tests ===\n\n"
@@ -458,6 +595,9 @@ run_test test_no_output_when_no_relevant_decisions
 run_test test_works_when_not_in_git_repo
 run_test test_outputs_context_when_decisions_found
 run_test test_respects_agentlog_limit_env_var
+run_test test_agentlog_topic_override_in_git_repo
+run_test test_skips_query_on_second_run_in_same_session
+run_test test_runs_every_time_without_session_id
 
 printf "\n=== Results: %d tests, %d passed, %d failed ===\n" "$TESTS_RUN" "$TESTS_PASSED" "$TESTS_FAILED"
 

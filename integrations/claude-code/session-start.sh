@@ -24,7 +24,7 @@
 #      }
 #
 # Environment variables:
-#   CLAUDE_SESSION_ID  - Set by Claude Code with the current session ID
+#   CLAUDE_SESSION_ID  - Set by Claude Code; used to run the query only once per session
 #   AGENTLOG_LIMIT     - Max entries to retrieve (default: 10)
 #   AGENTLOG_TOPIC     - Override the fallback topic (default: repo or dir name)
 #
@@ -46,6 +46,15 @@ if ! command -v agentlog &>/dev/null; then
 fi
 
 LIMIT="${AGENTLOG_LIMIT:-10}"
+
+# Run only once per session. If CLAUDE_SESSION_ID is set, use a marker file
+# to skip subsequent invocations within the same session.
+if [[ -n "${CLAUDE_SESSION_ID:-}" ]]; then
+    marker="/tmp/agentlog-session-${CLAUDE_SESSION_ID}"
+    if [[ -f "$marker" ]]; then
+        exit 0
+    fi
+fi
 
 # Collect working set files from git state.
 # Each source is optional - we handle non-git directories gracefully.
@@ -108,6 +117,11 @@ output=$("${cmd[@]}" 2>/dev/null) || exit 0
 # Suppress the "no results" message - it adds noise to the context
 if [[ -z "$output" || "$output" == "No relevant decisions found." ]]; then
     exit 0
+fi
+
+# Mark this session as having received context
+if [[ -n "${CLAUDE_SESSION_ID:-}" ]]; then
+    touch "$marker"
 fi
 
 printf '%s\n' "$output"
