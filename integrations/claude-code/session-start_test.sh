@@ -581,6 +581,211 @@ MOCK
     fi
 }
 
+test_verbose_prints_diagnostics_to_stderr() {
+    local tmpdir
+    tmpdir="$(make_tmpdir)"
+
+    git -C "$tmpdir" init -q
+    git -C "$tmpdir" config user.email "test@test.com"
+    git -C "$tmpdir" config user.name "Test"
+    echo "a" > "$tmpdir/file.txt"
+    git -C "$tmpdir" add file.txt
+    git -C "$tmpdir" commit -q -m "initial"
+    echo "modified" > "$tmpdir/file.txt"
+
+    local mockdir
+    mockdir="$(make_tmpdir)"
+    cat > "$mockdir/agentlog" <<'MOCK'
+#!/usr/bin/env bash
+echo "No relevant decisions found."
+MOCK
+    chmod +x "$mockdir/agentlog"
+
+    local stderr_output
+    stderr_output=$(cd "$tmpdir" && AGENTLOG_VERBOSE=1 PATH="$mockdir:/usr/bin:/bin" bash "$HOOK_SCRIPT" 2>&1 1>/dev/null)
+
+    if echo "$stderr_output" | grep -q '\[agentlog\]'; then
+        pass "verbose mode prints diagnostic output to stderr"
+    else
+        fail "verbose mode prints diagnostic output to stderr" "stderr was: $stderr_output"
+    fi
+
+    if echo "$stderr_output" | grep -q 'detected.*file'; then
+        pass "verbose mode shows files detected"
+    else
+        fail "verbose mode shows files detected" "stderr was: $stderr_output"
+    fi
+
+    if echo "$stderr_output" | grep -q 'command:.*agentlog context'; then
+        pass "verbose mode shows command being executed"
+    else
+        fail "verbose mode shows command being executed" "stderr was: $stderr_output"
+    fi
+}
+
+test_verbose_no_output_without_flag() {
+    local tmpdir
+    tmpdir="$(make_tmpdir)"
+
+    git -C "$tmpdir" init -q
+    git -C "$tmpdir" config user.email "test@test.com"
+    git -C "$tmpdir" config user.name "Test"
+    echo "a" > "$tmpdir/file.txt"
+    git -C "$tmpdir" add file.txt
+    git -C "$tmpdir" commit -q -m "initial"
+    echo "modified" > "$tmpdir/file.txt"
+
+    local mockdir
+    mockdir="$(make_tmpdir)"
+    cat > "$mockdir/agentlog" <<'MOCK'
+#!/usr/bin/env bash
+echo "No relevant decisions found."
+MOCK
+    chmod +x "$mockdir/agentlog"
+
+    local stderr_output
+    stderr_output=$(cd "$tmpdir" && PATH="$mockdir:/usr/bin:/bin" bash "$HOOK_SCRIPT" 2>&1 1>/dev/null)
+
+    if [[ -z "$stderr_output" ]]; then
+        pass "no verbose output when AGENTLOG_VERBOSE is not set"
+    else
+        fail "no verbose output when AGENTLOG_VERBOSE is not set" "stderr was: $stderr_output"
+    fi
+}
+
+test_dry_run_skips_agentlog_context() {
+    local tmpdir
+    tmpdir="$(make_tmpdir)"
+
+    git -C "$tmpdir" init -q
+    git -C "$tmpdir" config user.email "test@test.com"
+    git -C "$tmpdir" config user.name "Test"
+    echo "a" > "$tmpdir/file.txt"
+    git -C "$tmpdir" add file.txt
+    git -C "$tmpdir" commit -q -m "initial"
+    echo "modified" > "$tmpdir/file.txt"
+
+    local mockdir
+    mockdir="$(make_tmpdir)"
+    local argfile="$tmpdir/captured_args.txt"
+    cat > "$mockdir/agentlog" <<MOCK
+#!/usr/bin/env bash
+echo "\$@" > "$argfile"
+echo "# Relevant decisions"
+MOCK
+    chmod +x "$mockdir/agentlog"
+
+    local stderr_output stdout_output
+    stderr_output=$(cd "$tmpdir" && AGENTLOG_DRY_RUN=1 PATH="$mockdir:/usr/bin:/bin" bash "$HOOK_SCRIPT" 2>&1 1>/dev/null)
+    stdout_output=$(cd "$tmpdir" && AGENTLOG_DRY_RUN=1 PATH="$mockdir:/usr/bin:/bin" bash "$HOOK_SCRIPT" 2>/dev/null)
+
+    if [[ ! -f "$argfile" ]]; then
+        pass "dry-run does not call agentlog context"
+    else
+        fail "dry-run does not call agentlog context" "agentlog was called with: $(cat "$argfile")"
+    fi
+
+    if echo "$stderr_output" | grep -q '\[agentlog\] dry-run: would execute:.*agentlog context'; then
+        pass "dry-run prints what would be queried"
+    else
+        fail "dry-run prints what would be queried" "stderr was: $stderr_output"
+    fi
+
+    if [[ -z "$stdout_output" ]]; then
+        pass "dry-run produces no stdout"
+    else
+        fail "dry-run produces no stdout" "got stdout: $stdout_output"
+    fi
+}
+
+test_verbose_and_dry_run_combined() {
+    local tmpdir
+    tmpdir="$(make_tmpdir)"
+
+    git -C "$tmpdir" init -q
+    git -C "$tmpdir" config user.email "test@test.com"
+    git -C "$tmpdir" config user.name "Test"
+    echo "a" > "$tmpdir/file.txt"
+    git -C "$tmpdir" add file.txt
+    git -C "$tmpdir" commit -q -m "initial"
+    echo "modified" > "$tmpdir/file.txt"
+
+    local mockdir
+    mockdir="$(make_tmpdir)"
+    local argfile="$tmpdir/captured_args.txt"
+    cat > "$mockdir/agentlog" <<MOCK
+#!/usr/bin/env bash
+echo "\$@" > "$argfile"
+echo "# Relevant decisions"
+MOCK
+    chmod +x "$mockdir/agentlog"
+
+    local stderr_output
+    stderr_output=$(cd "$tmpdir" && AGENTLOG_VERBOSE=1 AGENTLOG_DRY_RUN=1 PATH="$mockdir:/usr/bin:/bin" bash "$HOOK_SCRIPT" 2>&1 1>/dev/null)
+
+    if [[ ! -f "$argfile" ]]; then
+        pass "combined flags: does not call agentlog context"
+    else
+        fail "combined flags: does not call agentlog context" "agentlog was called with: $(cat "$argfile")"
+    fi
+
+    if echo "$stderr_output" | grep -q '\[agentlog\] dry-run: would execute:'; then
+        pass "combined flags: prints dry-run message"
+    else
+        fail "combined flags: prints dry-run message" "stderr was: $stderr_output"
+    fi
+
+    if echo "$stderr_output" | grep -q 'detected.*file'; then
+        pass "combined flags: prints verbose diagnostics"
+    else
+        fail "combined flags: prints verbose diagnostics" "stderr was: $stderr_output"
+    fi
+}
+
+test_normal_operation_unchanged() {
+    local tmpdir
+    tmpdir="$(make_tmpdir)"
+
+    git -C "$tmpdir" init -q
+    git -C "$tmpdir" config user.email "test@test.com"
+    git -C "$tmpdir" config user.name "Test"
+    echo "a" > "$tmpdir/file.txt"
+    git -C "$tmpdir" add file.txt
+    git -C "$tmpdir" commit -q -m "initial"
+    echo "modified" > "$tmpdir/file.txt"
+
+    local mockdir
+    mockdir="$(make_tmpdir)"
+    cat > "$mockdir/agentlog" <<'MOCK'
+#!/usr/bin/env bash
+cat <<'CONTEXT'
+# Relevant decisions
+
+## [decision] Test decision (2025-01-15T10:30:00Z)
+Test body
+CONTEXT
+MOCK
+    chmod +x "$mockdir/agentlog"
+
+    local output
+    output=$(cd "$tmpdir" && PATH="$mockdir:/usr/bin:/bin" bash "$HOOK_SCRIPT" 2>/dev/null)
+
+    if echo "$output" | grep -q "# Relevant decisions"; then
+        pass "normal operation: context is output to stdout"
+    else
+        fail "normal operation: context is output to stdout" "got output: $output"
+    fi
+
+    local stderr_output
+    stderr_output=$(cd "$tmpdir" && PATH="$mockdir:/usr/bin:/bin" bash "$HOOK_SCRIPT" 2>&1 1>/dev/null)
+
+    if [[ -z "$stderr_output" ]]; then
+        pass "normal operation: no stderr output"
+    else
+        fail "normal operation: no stderr output" "got stderr: $stderr_output"
+    fi
+}
+
 # -- Run all tests --
 
 printf "=== session-start.sh tests ===\n\n"
@@ -598,6 +803,11 @@ run_test test_respects_agentlog_limit_env_var
 run_test test_agentlog_topic_override_in_git_repo
 run_test test_skips_query_on_second_run_in_same_session
 run_test test_runs_every_time_without_session_id
+run_test test_verbose_prints_diagnostics_to_stderr
+run_test test_verbose_no_output_without_flag
+run_test test_dry_run_skips_agentlog_context
+run_test test_verbose_and_dry_run_combined
+run_test test_normal_operation_unchanged
 
 printf "\n=== Results: %d tests, %d passed, %d failed ===\n" "$TESTS_RUN" "$TESTS_PASSED" "$TESTS_FAILED"
 

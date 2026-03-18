@@ -611,6 +611,186 @@ test_produces_no_stdout() {
     rm -rf "/tmp/agentlog-decisions/${session_id}"*
 }
 
+test_verbose_prints_diagnostics_to_stderr() {
+    local tmpdir mockdir
+    tmpdir="$(make_tmpdir)"
+    mockdir="$(make_tmpdir)"
+    init_git_repo "$tmpdir"
+
+    echo "change" > "$tmpdir/base.txt"
+    make_mock_agentlog "$mockdir"
+
+    local session_id="test-verbose-$$"
+    local stderr_output
+    stderr_output=$(cd "$tmpdir" && AGENTLOG_VERBOSE=1 CLAUDE_SESSION_ID="$session_id" PATH="$mockdir:/usr/bin:/bin" bash "$HOOK_SCRIPT" 2>&1 1>/dev/null)
+
+    if echo "$stderr_output" | grep -q '\[agentlog\]'; then
+        pass "verbose mode prints diagnostic output to stderr"
+    else
+        fail "verbose mode prints diagnostic output to stderr" "stderr was: $stderr_output"
+    fi
+
+    if echo "$stderr_output" | grep -q 'detected.*file'; then
+        pass "verbose mode shows files detected"
+    else
+        fail "verbose mode shows files detected" "stderr was: $stderr_output"
+    fi
+
+    if echo "$stderr_output" | grep -q 'command:.*agentlog write'; then
+        pass "verbose mode shows command being executed"
+    else
+        fail "verbose mode shows command being executed" "stderr was: $stderr_output"
+    fi
+
+    if echo "$stderr_output" | grep -q 'decision written'; then
+        pass "verbose mode shows write confirmation"
+    else
+        fail "verbose mode shows write confirmation" "stderr was: $stderr_output"
+    fi
+
+    rm -rf "/tmp/agentlog-decisions/${session_id}"*
+}
+
+test_verbose_no_output_without_flag() {
+    local tmpdir mockdir
+    tmpdir="$(make_tmpdir)"
+    mockdir="$(make_tmpdir)"
+    init_git_repo "$tmpdir"
+
+    echo "change" > "$tmpdir/base.txt"
+    make_mock_agentlog "$mockdir"
+
+    local session_id="test-no-verbose-$$"
+    local stderr_output
+    stderr_output=$(cd "$tmpdir" && CLAUDE_SESSION_ID="$session_id" PATH="$mockdir:/usr/bin:/bin" bash "$HOOK_SCRIPT" 2>&1 1>/dev/null)
+
+    if [[ -z "$stderr_output" ]]; then
+        pass "no verbose output when AGENTLOG_VERBOSE is not set"
+    else
+        fail "no verbose output when AGENTLOG_VERBOSE is not set" "stderr was: $stderr_output"
+    fi
+
+    rm -rf "/tmp/agentlog-decisions/${session_id}"*
+}
+
+test_dry_run_skips_agentlog_write() {
+    local tmpdir mockdir
+    tmpdir="$(make_tmpdir)"
+    mockdir="$(make_tmpdir)"
+    init_git_repo "$tmpdir"
+
+    echo "change" > "$tmpdir/base.txt"
+
+    local argfile="$tmpdir/captured_args.txt"
+    make_mock_agentlog "$mockdir" "$argfile"
+
+    local session_id="test-dry-run-$$"
+    local stderr_output
+    stderr_output=$(cd "$tmpdir" && AGENTLOG_DRY_RUN=1 CLAUDE_SESSION_ID="$session_id" PATH="$mockdir:/usr/bin:/bin" bash "$HOOK_SCRIPT" 2>&1 1>/dev/null)
+
+    if [[ ! -f "$argfile" ]]; then
+        pass "dry-run does not call agentlog write"
+    else
+        fail "dry-run does not call agentlog write" "agentlog was called with: $(cat "$argfile")"
+    fi
+
+    if echo "$stderr_output" | grep -q '\[agentlog\] dry-run: would execute:.*agentlog write'; then
+        pass "dry-run prints what would be written"
+    else
+        fail "dry-run prints what would be written" "stderr was: $stderr_output"
+    fi
+
+    rm -rf "/tmp/agentlog-decisions/${session_id}"*
+}
+
+test_dry_run_produces_no_stdout() {
+    local tmpdir mockdir
+    tmpdir="$(make_tmpdir)"
+    mockdir="$(make_tmpdir)"
+    init_git_repo "$tmpdir"
+
+    echo "change" > "$tmpdir/base.txt"
+    make_mock_agentlog "$mockdir"
+
+    local session_id="test-dry-run-stdout-$$"
+    local stdout_output
+    stdout_output=$(cd "$tmpdir" && AGENTLOG_DRY_RUN=1 CLAUDE_SESSION_ID="$session_id" PATH="$mockdir:/usr/bin:/bin" bash "$HOOK_SCRIPT" 2>/dev/null)
+
+    if [[ -z "$stdout_output" ]]; then
+        pass "dry-run produces no stdout"
+    else
+        fail "dry-run produces no stdout" "got stdout: $stdout_output"
+    fi
+
+    rm -rf "/tmp/agentlog-decisions/${session_id}"*
+}
+
+test_verbose_and_dry_run_combined() {
+    local tmpdir mockdir
+    tmpdir="$(make_tmpdir)"
+    mockdir="$(make_tmpdir)"
+    init_git_repo "$tmpdir"
+
+    echo "change" > "$tmpdir/base.txt"
+
+    local argfile="$tmpdir/captured_args.txt"
+    make_mock_agentlog "$mockdir" "$argfile"
+
+    local session_id="test-both-flags-$$"
+    local stderr_output
+    stderr_output=$(cd "$tmpdir" && AGENTLOG_VERBOSE=1 AGENTLOG_DRY_RUN=1 CLAUDE_SESSION_ID="$session_id" PATH="$mockdir:/usr/bin:/bin" bash "$HOOK_SCRIPT" 2>&1 1>/dev/null)
+
+    if [[ ! -f "$argfile" ]]; then
+        pass "combined flags: does not call agentlog write"
+    else
+        fail "combined flags: does not call agentlog write" "agentlog was called with: $(cat "$argfile")"
+    fi
+
+    if echo "$stderr_output" | grep -q '\[agentlog\] dry-run: would execute:'; then
+        pass "combined flags: prints dry-run message"
+    else
+        fail "combined flags: prints dry-run message" "stderr was: $stderr_output"
+    fi
+
+    if echo "$stderr_output" | grep -q 'detected.*file'; then
+        pass "combined flags: prints verbose diagnostics"
+    else
+        fail "combined flags: prints verbose diagnostics" "stderr was: $stderr_output"
+    fi
+
+    rm -rf "/tmp/agentlog-decisions/${session_id}"*
+}
+
+test_normal_operation_unchanged() {
+    local tmpdir mockdir
+    tmpdir="$(make_tmpdir)"
+    mockdir="$(make_tmpdir)"
+    init_git_repo "$tmpdir"
+
+    echo "change" > "$tmpdir/base.txt"
+
+    local argfile="$tmpdir/captured_args.txt"
+    make_mock_agentlog "$mockdir" "$argfile"
+
+    local session_id="test-normal-op-$$"
+    local output
+    output=$(cd "$tmpdir" && CLAUDE_SESSION_ID="$session_id" PATH="$mockdir:/usr/bin:/bin" bash "$HOOK_SCRIPT" 2>&1)
+
+    if [[ -f "$argfile" ]]; then
+        pass "normal operation: agentlog write is called"
+    else
+        fail "normal operation: agentlog write is called" "agentlog was not called"
+    fi
+
+    if [[ -z "$output" ]]; then
+        pass "normal operation: no output produced"
+    else
+        fail "normal operation: no output produced" "got output: $output"
+    fi
+
+    rm -rf "/tmp/agentlog-decisions/${session_id}"*
+}
+
 # -- Run all tests --
 
 printf "=== decision-write.sh tests ===\n\n"
@@ -632,6 +812,12 @@ run_test test_detects_new_files_on_second_turn
 run_test test_reuses_agentlog_session_across_turns
 run_test test_exits_silently_when_daemon_not_running
 run_test test_produces_no_stdout
+run_test test_verbose_prints_diagnostics_to_stderr
+run_test test_verbose_no_output_without_flag
+run_test test_dry_run_skips_agentlog_write
+run_test test_dry_run_produces_no_stdout
+run_test test_verbose_and_dry_run_combined
+run_test test_normal_operation_unchanged
 
 printf "\n=== Results: %d tests, %d passed, %d failed ===\n" "$TESTS_RUN" "$TESTS_PASSED" "$TESTS_FAILED"
 
