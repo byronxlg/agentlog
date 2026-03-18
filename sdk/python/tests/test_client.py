@@ -703,3 +703,198 @@ class TestLogMethod:
             assert req["method"] == "query"
             assert "start" in req["params"]
             assert "end" in req["params"]
+
+
+# ---------------------------------------------------------------------------
+# Export method tests
+# ---------------------------------------------------------------------------
+
+class TestExportMethod:
+    """Tests for the export() method."""
+
+    def test_basic_export(self, sock_path: str) -> None:
+        with FakeDaemon(sock_path) as daemon:
+            daemon.set_response("# Decision Log Export\n\n## Use Redis\n")
+            client = AgentlogClient(socket_path=sock_path)
+            result = client.export()
+
+            req = daemon.last_request
+            assert req["method"] == "export"
+            assert result == "# Decision Log Export\n\n## Use Redis\n"
+
+    def test_export_with_session(self, sock_path: str) -> None:
+        with FakeDaemon(sock_path) as daemon:
+            daemon.set_response("exported")
+            client = AgentlogClient(socket_path=sock_path)
+            client.export(session="sess-123")
+
+            req = daemon.last_request
+            assert req["method"] == "export"
+            assert req["params"]["session_id"] == "sess-123"
+
+    def test_export_with_since_duration(self, sock_path: str) -> None:
+        with FakeDaemon(sock_path) as daemon:
+            daemon.set_response("exported")
+            client = AgentlogClient(socket_path=sock_path)
+            client.export(since="7d")
+
+            req = daemon.last_request
+            assert req["method"] == "export"
+            # Duration should be resolved to ISO 8601 string.
+            assert "T" in req["params"]["since"]
+            assert req["params"]["since"].endswith("Z")
+
+    def test_export_with_until_duration(self, sock_path: str) -> None:
+        with FakeDaemon(sock_path) as daemon:
+            daemon.set_response("exported")
+            client = AgentlogClient(socket_path=sock_path)
+            client.export(until="1h")
+
+            req = daemon.last_request
+            assert req["method"] == "export"
+            assert "T" in req["params"]["until"]
+            assert req["params"]["until"].endswith("Z")
+
+    def test_export_with_since_iso(self, sock_path: str) -> None:
+        with FakeDaemon(sock_path) as daemon:
+            daemon.set_response("exported")
+            client = AgentlogClient(socket_path=sock_path)
+            client.export(since="2026-03-01T00:00:00Z")
+
+            req = daemon.last_request
+            assert req["params"]["since"] == "2026-03-01T00:00:00Z"
+
+    def test_export_with_file(self, sock_path: str) -> None:
+        with FakeDaemon(sock_path) as daemon:
+            daemon.set_response("exported")
+            client = AgentlogClient(socket_path=sock_path)
+            client.export(file="main.go")
+
+            req = daemon.last_request
+            assert req["params"]["file_path"] == "main.go"
+
+    def test_export_with_tag(self, sock_path: str) -> None:
+        with FakeDaemon(sock_path) as daemon:
+            daemon.set_response("exported")
+            client = AgentlogClient(socket_path=sock_path)
+            client.export(tag="infrastructure")
+
+            req = daemon.last_request
+            assert req["params"]["tag"] == "infrastructure"
+
+    def test_export_with_type(self, sock_path: str) -> None:
+        with FakeDaemon(sock_path) as daemon:
+            daemon.set_response("exported")
+            client = AgentlogClient(socket_path=sock_path)
+            client.export(type="decision")
+
+            req = daemon.last_request
+            assert req["params"]["type"] == "decision"
+
+    def test_export_format_json(self, sock_path: str) -> None:
+        with FakeDaemon(sock_path) as daemon:
+            daemon.set_response("[]")
+            client = AgentlogClient(socket_path=sock_path)
+            result = client.export(format="json")
+
+            req = daemon.last_request
+            assert req["params"]["format"] == "json"
+            assert result == "[]"
+
+    def test_export_format_text(self, sock_path: str) -> None:
+        with FakeDaemon(sock_path) as daemon:
+            daemon.set_response("No entries found.")
+            client = AgentlogClient(socket_path=sock_path)
+            result = client.export(format="text")
+
+            req = daemon.last_request
+            assert req["params"]["format"] == "text"
+            assert result == "No entries found."
+
+    def test_export_format_markdown(self, sock_path: str) -> None:
+        with FakeDaemon(sock_path) as daemon:
+            daemon.set_response("# Decision Log Export\n")
+            client = AgentlogClient(socket_path=sock_path)
+            result = client.export(format="markdown")
+
+            req = daemon.last_request
+            assert req["params"]["format"] == "markdown"
+
+    def test_export_template_pr(self, sock_path: str) -> None:
+        with FakeDaemon(sock_path) as daemon:
+            daemon.set_response("## What changed\n\n- **Use Redis**\n")
+            client = AgentlogClient(socket_path=sock_path)
+            result = client.export(template="pr")
+
+            req = daemon.last_request
+            assert req["params"]["template"] == "pr"
+            assert "What changed" in result
+
+    def test_export_template_retro(self, sock_path: str) -> None:
+        with FakeDaemon(sock_path) as daemon:
+            daemon.set_response("# Retrospective\n")
+            client = AgentlogClient(socket_path=sock_path)
+            result = client.export(template="retro")
+
+            req = daemon.last_request
+            assert req["params"]["template"] == "retro"
+
+    def test_export_template_handoff(self, sock_path: str) -> None:
+        with FakeDaemon(sock_path) as daemon:
+            daemon.set_response("# Handoff Document\n")
+            client = AgentlogClient(socket_path=sock_path)
+            result = client.export(template="handoff")
+
+            req = daemon.last_request
+            assert req["params"]["template"] == "handoff"
+
+    def test_export_empty_result(self, sock_path: str) -> None:
+        with FakeDaemon(sock_path) as daemon:
+            daemon.set_response("No entries found.")
+            client = AgentlogClient(socket_path=sock_path)
+            result = client.export()
+
+            assert result == "No entries found."
+
+    def test_export_omits_none_params(self, sock_path: str) -> None:
+        with FakeDaemon(sock_path) as daemon:
+            daemon.set_response("exported")
+            client = AgentlogClient(socket_path=sock_path)
+            client.export(tag="db")
+
+            req = daemon.last_request
+            assert req["method"] == "export"
+            assert req["params"] == {"tag": "db"}
+
+    def test_export_all_params(self, sock_path: str) -> None:
+        with FakeDaemon(sock_path) as daemon:
+            daemon.set_response("exported")
+            client = AgentlogClient(socket_path=sock_path)
+            client.export(
+                session="sess-1",
+                since="2026-03-01T00:00:00Z",
+                until="2026-03-15T00:00:00Z",
+                file="main.go",
+                tag="db",
+                type="decision",
+                format="text",
+                template="pr",
+            )
+
+            req = daemon.last_request
+            assert req["params"]["session_id"] == "sess-1"
+            assert req["params"]["since"] == "2026-03-01T00:00:00Z"
+            assert req["params"]["until"] == "2026-03-15T00:00:00Z"
+            assert req["params"]["file_path"] == "main.go"
+            assert req["params"]["tag"] == "db"
+            assert req["params"]["type"] == "decision"
+            assert req["params"]["format"] == "text"
+            assert req["params"]["template"] == "pr"
+
+    def test_export_returns_empty_string_for_non_string_result(self, sock_path: str) -> None:
+        with FakeDaemon(sock_path) as daemon:
+            daemon.set_response(42)
+            client = AgentlogClient(socket_path=sock_path)
+            result = client.export()
+
+            assert result == ""
