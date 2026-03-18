@@ -151,11 +151,15 @@ if [[ -z "$output" || "$output" == "No relevant decisions found." ]]; then
     exit 0
 fi
 
-verbose "injecting ${output%%$'\n'*}..."
+# Count context entries (lines starting with "## [" in the agentlog context output)
+entry_count=$(printf '%s\n' "$output" | grep -c '^## \[' 2>/dev/null || true)
 
-# Mark this session as having received context
+verbose "injecting ${output%%$'\n'*}..."
+verbose "Session summary: $entry_count context entries injected"
+
+# Mark this session as having received context and store entry count
 if [[ -n "${CLAUDE_SESSION_ID:-}" ]]; then
-    touch "$marker"
+    printf '%d' "$entry_count" > "$marker"
 fi
 
 printf '%s\n' "$output"

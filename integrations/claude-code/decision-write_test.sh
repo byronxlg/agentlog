@@ -761,6 +761,99 @@ test_verbose_and_dry_run_combined() {
     rm -rf "/tmp/agentlog-decisions/${session_id}"*
 }
 
+test_telemetry_increments_counter_per_write() {
+    local tmpdir mockdir
+    tmpdir="$(make_tmpdir)"
+    mockdir="$(make_tmpdir)"
+    init_git_repo "$tmpdir"
+
+    local argfile="$tmpdir/captured_args.txt"
+    make_mock_agentlog "$mockdir" "$argfile"
+
+    local session_id="test-telemetry-count-$$"
+
+    # First turn - creates a new file
+    echo "a" > "$tmpdir/file1.txt"
+    output=$(cd "$tmpdir" && CLAUDE_SESSION_ID="$session_id" PATH="$mockdir:/usr/bin:/bin" bash "$HOOK_SCRIPT" 2>&1)
+
+    local count_file="/tmp/agentlog-decisions/${session_id}.count"
+    if [[ -f "$count_file" ]]; then
+        local count
+        count=$(cat "$count_file")
+        if [[ "$count" -eq 1 ]]; then
+            pass "counter is 1 after first write"
+        else
+            fail "counter is 1 after first write" "count was: $count"
+        fi
+    else
+        fail "counter is 1 after first write" "count file does not exist"
+    fi
+
+    # Second turn - creates another file
+    echo "b" > "$tmpdir/file2.txt"
+    output=$(cd "$tmpdir" && CLAUDE_SESSION_ID="$session_id" PATH="$mockdir:/usr/bin:/bin" bash "$HOOK_SCRIPT" 2>&1)
+
+    if [[ -f "$count_file" ]]; then
+        local count
+        count=$(cat "$count_file")
+        if [[ "$count" -eq 2 ]]; then
+            pass "counter is 2 after second write"
+        else
+            fail "counter is 2 after second write" "count was: $count"
+        fi
+    else
+        fail "counter is 2 after second write" "count file does not exist"
+    fi
+
+    rm -rf "/tmp/agentlog-decisions/${session_id}"*
+}
+
+test_telemetry_verbose_shows_session_summary() {
+    local tmpdir mockdir
+    tmpdir="$(make_tmpdir)"
+    mockdir="$(make_tmpdir)"
+    init_git_repo "$tmpdir"
+
+    make_mock_agentlog "$mockdir"
+
+    local session_id="test-telemetry-verbose-$$"
+
+    echo "change" > "$tmpdir/base.txt"
+    local stderr_output
+    stderr_output=$(cd "$tmpdir" && AGENTLOG_VERBOSE=1 CLAUDE_SESSION_ID="$session_id" PATH="$mockdir:/usr/bin:/bin" bash "$HOOK_SCRIPT" 2>&1 1>/dev/null)
+
+    if echo "$stderr_output" | grep -q 'Session summary: 1 decisions captured'; then
+        pass "verbose mode shows session summary with count"
+    else
+        fail "verbose mode shows session summary with count" "stderr was: $stderr_output"
+    fi
+
+    rm -rf "/tmp/agentlog-decisions/${session_id}"*
+}
+
+test_telemetry_output_goes_to_stderr_not_stdout() {
+    local tmpdir mockdir
+    tmpdir="$(make_tmpdir)"
+    mockdir="$(make_tmpdir)"
+    init_git_repo "$tmpdir"
+
+    make_mock_agentlog "$mockdir"
+
+    local session_id="test-telemetry-stderr-$$"
+
+    echo "change" > "$tmpdir/base.txt"
+    local stdout_output
+    stdout_output=$(cd "$tmpdir" && AGENTLOG_VERBOSE=1 CLAUDE_SESSION_ID="$session_id" PATH="$mockdir:/usr/bin:/bin" bash "$HOOK_SCRIPT" 2>/dev/null)
+
+    if [[ -z "$stdout_output" ]]; then
+        pass "telemetry output does not leak to stdout"
+    else
+        fail "telemetry output does not leak to stdout" "got stdout: $stdout_output"
+    fi
+
+    rm -rf "/tmp/agentlog-decisions/${session_id}"*
+}
+
 test_normal_operation_unchanged() {
     local tmpdir mockdir
     tmpdir="$(make_tmpdir)"
@@ -817,6 +910,9 @@ run_test test_verbose_no_output_without_flag
 run_test test_dry_run_skips_agentlog_write
 run_test test_dry_run_produces_no_stdout
 run_test test_verbose_and_dry_run_combined
+run_test test_telemetry_increments_counter_per_write
+run_test test_telemetry_verbose_shows_session_summary
+run_test test_telemetry_output_goes_to_stderr_not_stdout
 run_test test_normal_operation_unchanged
 
 printf "\n=== Results: %d tests, %d passed, %d failed ===\n" "$TESTS_RUN" "$TESTS_PASSED" "$TESTS_FAILED"

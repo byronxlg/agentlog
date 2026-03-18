@@ -196,7 +196,17 @@ if [[ -z "$agentlog_session" ]] && [[ -s "$stderr_tmp" ]]; then
     cat "$stderr_tmp" > "$session_file"
 fi
 
-verbose "decision written"
+# Increment session decision counter
+count_file="${snapshot_dir}/${session_id}.count"
+prev_count=0
+if [[ -f "$count_file" ]]; then
+    prev_count=$(cat "$count_file")
+fi
+new_count=$((prev_count + 1))
+printf '%d' "$new_count" > "$count_file"
+
+verbose "decision written (session total: $new_count)"
+verbose "Session summary: $new_count decisions captured"
 
 rm -f "$stderr_tmp"
 exit 0

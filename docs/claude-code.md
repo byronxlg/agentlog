@@ -172,6 +172,16 @@ A Python SDK is in development that provides a programmatic interface to agentlo
 
 Check the project repository for updates on SDK availability.
 
+## Validating hooks
+
+The hooks are silent by default. Use `AGENTLOG_VERBOSE=1` to verify they are working:
+
+```bash
+AGENTLOG_VERBOSE=1 claude
+```
+
+Both hooks report session telemetry (decisions captured, context entries injected) via verbose mode. For detailed validation steps, troubleshooting, and expected behavior, see the [Hook Validation Guide](hook-validation.md).
+
 ## Troubleshooting
 
 **"daemon is not running"** - Start the daemon with `agentlog start`. Check `~/.agentlog/agentlogd.log` for errors.
@@ -179,3 +189,5 @@ Check the project repository for updates on SDK availability.
 **Decisions not appearing** - Verify the daemon is running (`agentlog log` should not error). Check that the `--type` flag uses a valid value: decision, attempt_failed, deferred, assumption, or question.
 
 **Hook not firing** - Verify the hook script is executable (`chmod +x`). Check that the matcher pattern in settings.json matches the tools you want to capture.
+
+For more troubleshooting scenarios, see the [Hook Validation Guide](hook-validation.md).

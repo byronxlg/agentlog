@@ -742,6 +742,136 @@ MOCK
     fi
 }
 
+test_telemetry_counts_context_entries() {
+    local tmpdir
+    tmpdir="$(make_tmpdir)"
+
+    git -C "$tmpdir" init -q
+    git -C "$tmpdir" config user.email "test@test.com"
+    git -C "$tmpdir" config user.name "Test"
+    echo "a" > "$tmpdir/file.txt"
+    git -C "$tmpdir" add file.txt
+    git -C "$tmpdir" commit -q -m "initial"
+    echo "modified" > "$tmpdir/file.txt"
+
+    local mockdir
+    mockdir="$(make_tmpdir)"
+    cat > "$mockdir/agentlog" <<'MOCK'
+#!/usr/bin/env bash
+cat <<'CONTEXT'
+# Relevant decisions
+
+## [decision] Use structured logging (2025-01-15T10:30:00Z)
+Switched from fmt.Println to slog for all log output.
+Files: internal/daemon/server.go
+Tags: architecture
+
+## [decision] Use SQLite for index (2025-01-15T11:00:00Z)
+Chose SQLite over PostgreSQL for the local index.
+Files: internal/index/store.go
+Tags: architecture
+
+## [assumption] Single user per daemon (2025-01-15T11:30:00Z)
+Assuming one user per daemon instance.
+Tags: design
+CONTEXT
+MOCK
+    chmod +x "$mockdir/agentlog"
+
+    local session_id="test-telemetry-count-$$"
+    rm -f "/tmp/agentlog-session-${session_id}"
+
+    output=$(cd "$tmpdir" && CLAUDE_SESSION_ID="$session_id" PATH="$mockdir:/usr/bin:/bin" bash "$HOOK_SCRIPT" 2>/dev/null)
+
+    local marker="/tmp/agentlog-session-${session_id}"
+    if [[ -f "$marker" ]]; then
+        local count
+        count=$(cat "$marker")
+        if [[ "$count" -eq 3 ]]; then
+            pass "marker file stores context entry count (3)"
+        else
+            fail "marker file stores context entry count (3)" "count was: $count"
+        fi
+    else
+        fail "marker file stores context entry count (3)" "marker file does not exist"
+    fi
+
+    rm -f "/tmp/agentlog-session-${session_id}"
+}
+
+test_telemetry_verbose_shows_session_summary() {
+    local tmpdir
+    tmpdir="$(make_tmpdir)"
+
+    git -C "$tmpdir" init -q
+    git -C "$tmpdir" config user.email "test@test.com"
+    git -C "$tmpdir" config user.name "Test"
+    echo "a" > "$tmpdir/file.txt"
+    git -C "$tmpdir" add file.txt
+    git -C "$tmpdir" commit -q -m "initial"
+    echo "modified" > "$tmpdir/file.txt"
+
+    local mockdir
+    mockdir="$(make_tmpdir)"
+    cat > "$mockdir/agentlog" <<'MOCK'
+#!/usr/bin/env bash
+cat <<'CONTEXT'
+# Relevant decisions
+
+## [decision] Use structured logging (2025-01-15T10:30:00Z)
+Switched from fmt.Println to slog for all log output.
+Files: internal/daemon/server.go
+Tags: architecture
+CONTEXT
+MOCK
+    chmod +x "$mockdir/agentlog"
+
+    local stderr_output
+    stderr_output=$(cd "$tmpdir" && AGENTLOG_VERBOSE=1 PATH="$mockdir:/usr/bin:/bin" bash "$HOOK_SCRIPT" 2>&1 1>/dev/null)
+
+    if echo "$stderr_output" | grep -q 'Session summary: 1 context entries injected'; then
+        pass "verbose mode shows session summary with entry count"
+    else
+        fail "verbose mode shows session summary with entry count" "stderr was: $stderr_output"
+    fi
+}
+
+test_telemetry_output_goes_to_stderr_not_stdout() {
+    local tmpdir
+    tmpdir="$(make_tmpdir)"
+
+    git -C "$tmpdir" init -q
+    git -C "$tmpdir" config user.email "test@test.com"
+    git -C "$tmpdir" config user.name "Test"
+    echo "a" > "$tmpdir/file.txt"
+    git -C "$tmpdir" add file.txt
+    git -C "$tmpdir" commit -q -m "initial"
+    echo "modified" > "$tmpdir/file.txt"
+
+    local mockdir
+    mockdir="$(make_tmpdir)"
+    cat > "$mockdir/agentlog" <<'MOCK'
+#!/usr/bin/env bash
+cat <<'CONTEXT'
+# Relevant decisions
+
+## [decision] Test decision (2025-01-15T10:30:00Z)
+Test body
+CONTEXT
+MOCK
+    chmod +x "$mockdir/agentlog"
+
+    local stdout_output
+    stdout_output=$(cd "$tmpdir" && AGENTLOG_VERBOSE=1 PATH="$mockdir:/usr/bin:/bin" bash "$HOOK_SCRIPT" 2>/dev/null)
+
+    # Stdout should only contain the context output, not telemetry lines
+    if echo "$stdout_output" | grep -q 'Session summary'; then
+        fail "telemetry summary does not leak to stdout" "got stdout containing: Session summary"
+    else
+        pass "telemetry summary does not leak to stdout"
+    fi
+}
+
 test_normal_operation_unchanged() {
     local tmpdir
     tmpdir="$(make_tmpdir)"
@@ -807,6 +937,9 @@ run_test test_verbose_prints_diagnostics_to_stderr
 run_test test_verbose_no_output_without_flag
 run_test test_dry_run_skips_agentlog_context
 run_test test_verbose_and_dry_run_combined
+run_test test_telemetry_counts_context_entries
+run_test test_telemetry_verbose_shows_session_summary
+run_test test_telemetry_output_goes_to_stderr_not_stdout
 run_test test_normal_operation_unchanged
 
 printf "\n=== Results: %d tests, %d passed, %d failed ===\n" "$TESTS_RUN" "$TESTS_PASSED" "$TESTS_FAILED"

@@ -153,6 +153,16 @@ This shows past decisions, failed attempts, and assumptions related to the file.
 Use this context to avoid repeating failed approaches or contradicting prior decisions.
 ```
 
+## Validating hooks
+
+The hooks are silent by default. Use `AGENTLOG_VERBOSE=1` to verify they are working:
+
+```bash
+AGENTLOG_VERBOSE=1 claude
+```
+
+Both hooks report session telemetry (decisions captured, context entries injected) via verbose mode. For detailed validation steps and troubleshooting, see the [Hook Validation Guide](/docs/hook-validation).
+
 ## Troubleshooting
 
 **"daemon is not running"** - Start the daemon with `agentlog start`. Check `~/.agentlog/agentlogd.log` for errors.
@@ -160,3 +170,5 @@ Use this context to avoid repeating failed approaches or contradicting prior dec
 **Decisions not appearing** - Verify the daemon is running (`agentlog log` should not error). Check that the `--type` flag uses a valid value: `decision`, `attempt_failed`, `deferred`, `assumption`, or `question`.
 
 **Hook not firing** - Verify the hook script is executable (`chmod +x`). Check that the matcher pattern in `settings.json` matches the tools you want to capture.
+
+For more troubleshooting scenarios, see the [Hook Validation Guide](/docs/hook-validation).
