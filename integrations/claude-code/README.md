@@ -1,9 +1,37 @@
 # Claude Code Integration
 
-Two hooks for integrating agentlog with Claude Code:
+agentlog integrates with Claude Code through a skill and two hooks:
 
+- **Skill** (`skill/SKILL.md`) - Teaches Claude Code the agentlog CLI, entry types, and common workflows. Self-configures hooks on first use.
 - **session-start.sh** - Injects relevant past decisions into the conversation at session start
 - **decision-write.sh** - Automatically captures decisions when files are changed during a session
+
+## Skill installation
+
+The agentlog skill is the recommended way to set up Claude Code integration. It gives Claude knowledge of the full CLI and configures hooks automatically.
+
+```bash
+claude install-skill /path/to/agentlog/integrations/claude-code/skill
+```
+
+The skill provides:
+- All agentlog CLI commands with usage examples
+- The five entry types (decision, attempt_failed, deferred, assumption, question) and when to use each
+- Common workflows for starting sessions, capturing decisions, and reviewing history
+- Hook self-configuration - Claude will set up the hooks below when asked
+
+After installing the skill, ask Claude: "Set up agentlog hooks for this project."
+
+### Skill vs hooks
+
+| | Skill | Hooks only |
+|---|---|---|
+| CLI guidance for Claude | Yes | No |
+| Automatic decision capture | Yes (after hook setup) | Yes |
+| Context injection | Yes (after hook setup) | Yes |
+| Manual `agentlog write` calls | Claude knows when and how | Requires CLAUDE.md instructions |
+
+If you prefer explicit control and do not want Claude to have built-in knowledge of agentlog, use the hook-only installation below.
 
 ## Hooks
 
@@ -138,9 +166,17 @@ agentlog log
 # Expected: "no entries found" (empty log is fine)
 ```
 
-### 3. Set up hooks in your project
+### 3. Set up the integration
 
-Navigate to the project where you use Claude Code, then run the install script:
+**Option A: Skill (recommended)** - Install the skill and let Claude configure hooks:
+
+```bash
+claude install-skill /path/to/agentlog/integrations/claude-code/skill
+```
+
+Then start a Claude Code session and ask: "Set up agentlog hooks for this project."
+
+**Option B: Hooks only** - Run the install script from your project root:
 
 ```bash
 cd /path/to/your-project
