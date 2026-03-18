@@ -153,6 +153,24 @@ fi
 
 verbose "injecting ${output%%$'\n'*}..."
 
+# Count context entries (markdown headers like "## [decision]")
+entry_count=$(printf '%s\n' "$output" | grep -c '^## \[' || true)
+
+# Track cumulative count for this session
+if [[ -n "${CLAUDE_SESSION_ID:-}" ]]; then
+    count_file="/tmp/agentlog-session-${CLAUDE_SESSION_ID}.count"
+    if [[ -f "$count_file" ]]; then
+        prev_count=$(cat "$count_file")
+    else
+        prev_count=0
+    fi
+    total=$((prev_count + entry_count))
+    printf '%d\n' "$total" > "$count_file"
+    verbose "Session summary: $total context entries injected"
+else
+    verbose "Session summary: $entry_count context entries injected"
+fi
+
 # Mark this session as having received context
 if [[ -n "${CLAUDE_SESSION_ID:-}" ]]; then
     touch "$marker"

@@ -786,6 +786,101 @@ MOCK
     fi
 }
 
+test_counts_context_entries_injected() {
+    local tmpdir
+    tmpdir="$(make_tmpdir)"
+
+    git -C "$tmpdir" init -q
+    git -C "$tmpdir" config user.email "test@test.com"
+    git -C "$tmpdir" config user.name "Test"
+    echo "a" > "$tmpdir/file.txt"
+    git -C "$tmpdir" add file.txt
+    git -C "$tmpdir" commit -q -m "initial"
+    echo "modified" > "$tmpdir/file.txt"
+
+    local mockdir
+    mockdir="$(make_tmpdir)"
+    # Mock returns 3 context entries (## [ headers)
+    cat > "$mockdir/agentlog" <<'MOCK'
+#!/usr/bin/env bash
+cat <<'CONTEXT'
+# Relevant decisions
+
+## [decision] Use structured logging (2025-01-15T10:30:00Z)
+Switched to slog.
+
+## [decision] Use SQLite for index (2025-01-16T09:00:00Z)
+Pure Go driver.
+
+## [attempt_failed] Tried BoltDB (2025-01-16T10:00:00Z)
+Too slow for our use case.
+CONTEXT
+MOCK
+    chmod +x "$mockdir/agentlog"
+
+    local session_id="test-telemetry-count-$$"
+    # Clean up any stale files
+    rm -f "/tmp/agentlog-session-${session_id}" "/tmp/agentlog-session-${session_id}.count"
+
+    output=$(cd "$tmpdir" && CLAUDE_SESSION_ID="$session_id" PATH="$mockdir:/usr/bin:/bin" bash "$HOOK_SCRIPT" 2>/dev/null)
+
+    local count_file="/tmp/agentlog-session-${session_id}.count"
+    if [[ -f "$count_file" ]]; then
+        local count
+        count=$(cat "$count_file")
+        if [[ "$count" -eq 3 ]]; then
+            pass "counts 3 context entries injected"
+        else
+            fail "counts 3 context entries injected" "count was: $count"
+        fi
+    else
+        fail "counts 3 context entries injected" "count file not created"
+    fi
+
+    # Clean up
+    rm -f "/tmp/agentlog-session-${session_id}" "/tmp/agentlog-session-${session_id}.count"
+}
+
+test_telemetry_verbose_outputs_session_summary() {
+    local tmpdir
+    tmpdir="$(make_tmpdir)"
+
+    git -C "$tmpdir" init -q
+    git -C "$tmpdir" config user.email "test@test.com"
+    git -C "$tmpdir" config user.name "Test"
+    echo "a" > "$tmpdir/file.txt"
+    git -C "$tmpdir" add file.txt
+    git -C "$tmpdir" commit -q -m "initial"
+    echo "modified" > "$tmpdir/file.txt"
+
+    local mockdir
+    mockdir="$(make_tmpdir)"
+    cat > "$mockdir/agentlog" <<'MOCK'
+#!/usr/bin/env bash
+cat <<'CONTEXT'
+# Relevant decisions
+
+## [decision] Test decision (2025-01-15T10:30:00Z)
+Test body
+CONTEXT
+MOCK
+    chmod +x "$mockdir/agentlog"
+
+    local session_id="test-telemetry-verbose-$$"
+    rm -f "/tmp/agentlog-session-${session_id}" "/tmp/agentlog-session-${session_id}.count"
+
+    local stderr_output
+    stderr_output=$(cd "$tmpdir" && AGENTLOG_VERBOSE=1 CLAUDE_SESSION_ID="$session_id" PATH="$mockdir:/usr/bin:/bin" bash "$HOOK_SCRIPT" 2>&1 1>/dev/null)
+
+    if echo "$stderr_output" | grep -q 'Session summary:.*context entries injected'; then
+        pass "verbose mode shows telemetry session summary"
+    else
+        fail "verbose mode shows telemetry session summary" "stderr was: $stderr_output"
+    fi
+
+    rm -f "/tmp/agentlog-session-${session_id}" "/tmp/agentlog-session-${session_id}.count"
+}
+
 # -- Run all tests --
 
 printf "=== session-start.sh tests ===\n\n"
@@ -808,6 +903,8 @@ run_test test_verbose_no_output_without_flag
 run_test test_dry_run_skips_agentlog_context
 run_test test_verbose_and_dry_run_combined
 run_test test_normal_operation_unchanged
+run_test test_counts_context_entries_injected
+run_test test_telemetry_verbose_outputs_session_summary
 
 printf "\n=== Results: %d tests, %d passed, %d failed ===\n" "$TESTS_RUN" "$TESTS_PASSED" "$TESTS_FAILED"
 
