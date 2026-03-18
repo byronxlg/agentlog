@@ -79,6 +79,26 @@ export interface ContextOptions {
   limit?: number;
 }
 
+/** Options for exporting entries as a formatted string. */
+export interface ExportOptions {
+  /** Filter by session ID. */
+  session?: string;
+  /** Only entries after this time (ISO 8601 or duration like "1h", "7d"). */
+  since?: string;
+  /** Only entries before this time (ISO 8601 or duration like "1h", "7d"). */
+  until?: string;
+  /** Filter by file reference. */
+  file?: string;
+  /** Filter by tag. */
+  tag?: string;
+  /** Filter by entry type. */
+  type?: string;
+  /** Output format: "markdown" (default), "json", or "text". */
+  format?: string;
+  /** Template name: "pr", "retro", or "handoff". */
+  template?: string;
+}
+
 /** Options for constructing an AgentlogClient. */
 export interface ClientOptions {
   /**

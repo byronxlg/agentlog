@@ -949,3 +949,319 @@ describe("context method", () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// Export method tests
+// ---------------------------------------------------------------------------
+
+describe("export method", () => {
+  it("calls daemon export method and returns result", async () => {
+    const daemon = new FakeDaemon(sockPath);
+    daemon.setResponse("# Decision Log Export\n\n## Use Redis\n");
+    await daemon.start();
+
+    try {
+      const client = new AgentlogClient({ socketPath: sockPath });
+      const result = await client.export();
+
+      expect(daemon.lastRequest!.method).toBe("export");
+      expect(result).toBe("# Decision Log Export\n\n## Use Redis\n");
+    } finally {
+      await daemon.stop();
+    }
+  });
+
+  it("passes session parameter", async () => {
+    const daemon = new FakeDaemon(sockPath);
+    daemon.setResponse("exported");
+    await daemon.start();
+
+    try {
+      const client = new AgentlogClient({ socketPath: sockPath });
+      await client.export({ session: "sess-123" });
+
+      const params = daemon.lastRequest!.params as Record<string, unknown>;
+      expect(params.session_id).toBe("sess-123");
+    } finally {
+      await daemon.stop();
+    }
+  });
+
+  it("resolves since duration to ISO 8601", async () => {
+    const daemon = new FakeDaemon(sockPath);
+    daemon.setResponse("exported");
+    await daemon.start();
+
+    try {
+      const client = new AgentlogClient({ socketPath: sockPath });
+      await client.export({ since: "7d" });
+
+      const params = daemon.lastRequest!.params as Record<string, unknown>;
+      const since = params.since as string;
+      expect(since).toContain("T");
+      expect(since).toMatch(/Z$/);
+    } finally {
+      await daemon.stop();
+    }
+  });
+
+  it("resolves until duration to ISO 8601", async () => {
+    const daemon = new FakeDaemon(sockPath);
+    daemon.setResponse("exported");
+    await daemon.start();
+
+    try {
+      const client = new AgentlogClient({ socketPath: sockPath });
+      await client.export({ until: "1h" });
+
+      const params = daemon.lastRequest!.params as Record<string, unknown>;
+      const until = params.until as string;
+      expect(until).toContain("T");
+      expect(until).toMatch(/Z$/);
+    } finally {
+      await daemon.stop();
+    }
+  });
+
+  it("passes through ISO 8601 since value", async () => {
+    const daemon = new FakeDaemon(sockPath);
+    daemon.setResponse("exported");
+    await daemon.start();
+
+    try {
+      const client = new AgentlogClient({ socketPath: sockPath });
+      await client.export({ since: "2026-03-01T00:00:00Z" });
+
+      const params = daemon.lastRequest!.params as Record<string, unknown>;
+      expect(params.since).toBe("2026-03-01T00:00:00Z");
+    } finally {
+      await daemon.stop();
+    }
+  });
+
+  it("passes file parameter", async () => {
+    const daemon = new FakeDaemon(sockPath);
+    daemon.setResponse("exported");
+    await daemon.start();
+
+    try {
+      const client = new AgentlogClient({ socketPath: sockPath });
+      await client.export({ file: "main.go" });
+
+      const params = daemon.lastRequest!.params as Record<string, unknown>;
+      expect(params.file_path).toBe("main.go");
+    } finally {
+      await daemon.stop();
+    }
+  });
+
+  it("passes tag parameter", async () => {
+    const daemon = new FakeDaemon(sockPath);
+    daemon.setResponse("exported");
+    await daemon.start();
+
+    try {
+      const client = new AgentlogClient({ socketPath: sockPath });
+      await client.export({ tag: "infrastructure" });
+
+      const params = daemon.lastRequest!.params as Record<string, unknown>;
+      expect(params.tag).toBe("infrastructure");
+    } finally {
+      await daemon.stop();
+    }
+  });
+
+  it("passes type parameter", async () => {
+    const daemon = new FakeDaemon(sockPath);
+    daemon.setResponse("exported");
+    await daemon.start();
+
+    try {
+      const client = new AgentlogClient({ socketPath: sockPath });
+      await client.export({ type: "decision" });
+
+      const params = daemon.lastRequest!.params as Record<string, unknown>;
+      expect(params.type).toBe("decision");
+    } finally {
+      await daemon.stop();
+    }
+  });
+
+  it("passes format json", async () => {
+    const daemon = new FakeDaemon(sockPath);
+    daemon.setResponse("[]");
+    await daemon.start();
+
+    try {
+      const client = new AgentlogClient({ socketPath: sockPath });
+      const result = await client.export({ format: "json" });
+
+      const params = daemon.lastRequest!.params as Record<string, unknown>;
+      expect(params.format).toBe("json");
+      expect(result).toBe("[]");
+    } finally {
+      await daemon.stop();
+    }
+  });
+
+  it("passes format text", async () => {
+    const daemon = new FakeDaemon(sockPath);
+    daemon.setResponse("No entries found.");
+    await daemon.start();
+
+    try {
+      const client = new AgentlogClient({ socketPath: sockPath });
+      const result = await client.export({ format: "text" });
+
+      const params = daemon.lastRequest!.params as Record<string, unknown>;
+      expect(params.format).toBe("text");
+      expect(result).toBe("No entries found.");
+    } finally {
+      await daemon.stop();
+    }
+  });
+
+  it("passes format markdown", async () => {
+    const daemon = new FakeDaemon(sockPath);
+    daemon.setResponse("# Decision Log Export\n");
+    await daemon.start();
+
+    try {
+      const client = new AgentlogClient({ socketPath: sockPath });
+      await client.export({ format: "markdown" });
+
+      const params = daemon.lastRequest!.params as Record<string, unknown>;
+      expect(params.format).toBe("markdown");
+    } finally {
+      await daemon.stop();
+    }
+  });
+
+  it("passes template pr", async () => {
+    const daemon = new FakeDaemon(sockPath);
+    daemon.setResponse("## What changed\n\n- **Use Redis**\n");
+    await daemon.start();
+
+    try {
+      const client = new AgentlogClient({ socketPath: sockPath });
+      const result = await client.export({ template: "pr" });
+
+      const params = daemon.lastRequest!.params as Record<string, unknown>;
+      expect(params.template).toBe("pr");
+      expect(result).toContain("What changed");
+    } finally {
+      await daemon.stop();
+    }
+  });
+
+  it("passes template retro", async () => {
+    const daemon = new FakeDaemon(sockPath);
+    daemon.setResponse("# Retrospective\n");
+    await daemon.start();
+
+    try {
+      const client = new AgentlogClient({ socketPath: sockPath });
+      await client.export({ template: "retro" });
+
+      const params = daemon.lastRequest!.params as Record<string, unknown>;
+      expect(params.template).toBe("retro");
+    } finally {
+      await daemon.stop();
+    }
+  });
+
+  it("passes template handoff", async () => {
+    const daemon = new FakeDaemon(sockPath);
+    daemon.setResponse("# Handoff Document\n");
+    await daemon.start();
+
+    try {
+      const client = new AgentlogClient({ socketPath: sockPath });
+      await client.export({ template: "handoff" });
+
+      const params = daemon.lastRequest!.params as Record<string, unknown>;
+      expect(params.template).toBe("handoff");
+    } finally {
+      await daemon.stop();
+    }
+  });
+
+  it("handles empty result", async () => {
+    const daemon = new FakeDaemon(sockPath);
+    daemon.setResponse("No entries found.");
+    await daemon.start();
+
+    try {
+      const client = new AgentlogClient({ socketPath: sockPath });
+      const result = await client.export();
+
+      expect(result).toBe("No entries found.");
+    } finally {
+      await daemon.stop();
+    }
+  });
+
+  it("omits undefined parameters", async () => {
+    const daemon = new FakeDaemon(sockPath);
+    daemon.setResponse("exported");
+    await daemon.start();
+
+    try {
+      const client = new AgentlogClient({ socketPath: sockPath });
+      await client.export({ tag: "db" });
+
+      const req = daemon.lastRequest!;
+      expect(req.method).toBe("export");
+      expect(req.params).toEqual({ tag: "db" });
+    } finally {
+      await daemon.stop();
+    }
+  });
+
+  it("passes all parameters combined", async () => {
+    const daemon = new FakeDaemon(sockPath);
+    daemon.setResponse("exported");
+    await daemon.start();
+
+    try {
+      const client = new AgentlogClient({ socketPath: sockPath });
+      await client.export({
+        session: "sess-1",
+        since: "2026-03-01T00:00:00Z",
+        until: "2026-03-15T00:00:00Z",
+        file: "main.go",
+        tag: "db",
+        type: "decision",
+        format: "text",
+        template: "pr",
+      });
+
+      const params = daemon.lastRequest!.params as Record<string, unknown>;
+      expect(params.session_id).toBe("sess-1");
+      expect(params.since).toBe("2026-03-01T00:00:00Z");
+      expect(params.until).toBe("2026-03-15T00:00:00Z");
+      expect(params.file_path).toBe("main.go");
+      expect(params.tag).toBe("db");
+      expect(params.type).toBe("decision");
+      expect(params.format).toBe("text");
+      expect(params.template).toBe("pr");
+    } finally {
+      await daemon.stop();
+    }
+  });
+
+  it("returns empty string for non-string result", async () => {
+    const daemon = new FakeDaemon(sockPath);
+    daemon.setResponse(42);
+    await daemon.start();
+
+    try {
+      const client = new AgentlogClient({ socketPath: sockPath });
+      const result = await client.export();
+
+      expect(result).toBe("");
+    } finally {
+      await daemon.stop();
+    }
+  });
+});

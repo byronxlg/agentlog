@@ -14,6 +14,7 @@ import type {
   DaemonRequest,
   DaemonResponse,
   Entry,
+  ExportOptions,
   LogOptions,
   QueryOptions,
   WriteOptions,
@@ -381,6 +382,50 @@ export class AgentlogClient {
     const entries: Entry[] = Array.isArray(result) ? result : [];
 
     return AgentlogClient._formatContext(entries);
+  }
+
+  /**
+   * Export entries as a formatted string.
+   *
+   * Calls the daemon's `export` protocol method. The daemon handles
+   * filtering, sorting, and formatting; this method resolves duration
+   * strings client-side and passes all other parameters through.
+   *
+   * @param options - Export parameters.
+   * @returns Formatted string from the daemon.
+   */
+  async export(options: ExportOptions = {}): Promise<string> {
+    const { session, since, until, file, tag, type, format, template } =
+      options;
+
+    const params: Record<string, unknown> = {};
+    if (session != null) {
+      params.session_id = session;
+    }
+    if (since != null) {
+      params.since = resolveTime(since);
+    }
+    if (until != null) {
+      params.until = resolveTime(until);
+    }
+    if (file != null) {
+      params.file_path = file;
+    }
+    if (tag != null) {
+      params.tag = tag;
+    }
+    if (type != null) {
+      params.type = type;
+    }
+    if (format != null) {
+      params.format = format;
+    }
+    if (template != null) {
+      params.template = template;
+    }
+
+    const result = await this._send("export", params);
+    return typeof result === "string" ? result : "";
   }
 
   // -- internal helpers -----------------------------------------------------
