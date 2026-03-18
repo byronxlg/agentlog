@@ -165,6 +165,86 @@ agentlog blame internal/index/index.go
 agentlog blame --verbose src/main.go
 ```
 
+### `agentlog context`
+
+Get relevant decisions formatted for LLM context injection. Returns decisions as a markdown-formatted text block, filtered by files or topic.
+
+```bash
+agentlog context [flags]
+```
+
+**Flags:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--files` | | Comma-separated file paths to find relevant decisions for |
+| `--topic` | | Topic or project name to search for |
+| `--limit` | `10` | Maximum number of entries to return |
+
+**Examples:**
+
+```bash
+# Context for specific files
+agentlog context --files src/index.go,internal/store.go
+
+# Context for a topic
+agentlog context --topic authentication
+
+# Combine both
+agentlog context --files src/auth.go --topic "session tokens" --limit 5
+```
+
+### `agentlog export`
+
+Export decision entries as formatted output. Supports multiple output formats and built-in templates for common use cases.
+
+```bash
+agentlog export [flags]
+```
+
+**Flags:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--session` | | Filter by session ID |
+| `--since` | | Show entries after this time (RFC 3339 or relative: `1h`, `7d`) |
+| `--until` | | Show entries before this time (RFC 3339 or relative: `1h`, `7d`) |
+| `--file` | | Filter by referenced file path |
+| `--tag` | | Filter by tag |
+| `--type` | | Filter by entry type |
+| `--format` | `markdown` | Output format: `markdown`, `json`, `text` |
+| `--template` | | Use a built-in template: `pr`, `retro`, `handoff` |
+
+**Templates:**
+
+| Template | Description |
+|----------|-------------|
+| `pr` | PR summary - decisions and changes for a pull request description |
+| `retro` | Retrospective - categorized review of decisions, failed attempts, and deferred work |
+| `handoff` | Handoff document - context needed for another developer to continue the work |
+
+**Examples:**
+
+```bash
+# Export recent decisions as markdown
+agentlog export --since 1d
+
+# Export as JSON for processing
+agentlog export --format json --since 7d
+
+# Generate a PR summary from today's session
+agentlog export --template pr --since 1d
+
+# Retrospective for the last week
+agentlog export --template retro --since 7d
+
+# Handoff document filtered by file
+agentlog export --template handoff --file internal/auth/jwt.go
+
+# Plain text export for a specific session
+agentlog export --format text --session a1b2c3d4
+```
+
 ## Entry types
 
 Each entry has a type that describes the kind of decision being logged:

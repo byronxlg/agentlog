@@ -12,6 +12,7 @@ Git tells you *what* changed. LLM traces tell you *what was said*. Neither tells
 - **SQLite index** - fast queries by time, type, session, tags, or file
 - **Full-text search** - find decisions by keyword across title and body
 - **File blame** - see which decisions affected a specific file
+- **Export with templates** - output as markdown, JSON, or text with built-in PR, retro, and handoff templates
 - **Session tracking** - group related decisions within a coding session
 - **Single binary** - pure Go, no CGO, no external dependencies
 
@@ -97,6 +98,7 @@ agentlog stop
 | `agentlog show <session>` | Show all entries in a session (supports prefix matching) |
 | `agentlog blame <file>` | Show decisions referencing a file |
 | `agentlog context` | Get relevant decisions formatted for LLM context (`--files`, `--topic`, `--limit`) |
+| `agentlog export` | Export formatted decision output (`--format`, `--template`, filters) |
 
 All commands accept `--dir <path>` to override the data directory (default: `~/.agentlog`).
 
@@ -165,6 +167,28 @@ agentlog context --topic my-project
 SDKs also expose a `context()` method for programmatic access.
 
 See [docs/claude-code.md](docs/claude-code.md) for the full integration guide, CLAUDE.md snippets, and examples.
+
+## Export
+
+Export decisions as formatted output for PR descriptions, retrospectives, or handoff documents:
+
+```bash
+# PR summary from today's work
+agentlog export --template pr --since 1d
+
+# Retrospective of the last week
+agentlog export --template retro --since 7d
+
+# Handoff document for a specific area
+agentlog export --template handoff --file internal/auth/jwt.go
+
+# Export as JSON for scripting
+agentlog export --format json --since 7d
+```
+
+Formats: `markdown` (default), `json`, `text`. Templates: `pr`, `retro`, `handoff`. All filter flags (`--session`, `--since`, `--until`, `--file`, `--tag`, `--type`) are supported.
+
+The Python and TypeScript SDKs also expose an `export()` method for programmatic access.
 
 ## TypeScript SDK
 

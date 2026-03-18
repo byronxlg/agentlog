@@ -87,6 +87,29 @@ console.log(context);
 // Files: internal/auth/jwt.go
 ```
 
+### Exporting entries
+
+```typescript
+// Export recent decisions as markdown
+const output = await client.export({ since: "1d" });
+
+// Export as JSON
+const jsonOutput = await client.export({ format: "json", since: "7d" });
+
+// Generate a PR summary
+const prSummary = await client.export({ template: "pr", since: "1d" });
+
+// Export with filters
+const filtered = await client.export({
+  type: "decision",
+  tag: "infrastructure",
+  since: "7d",
+});
+
+// Retrospective for a session
+const retro = await client.export({ template: "retro", session: "your-session-id" });
+```
+
 ### Configuration
 
 The SDK looks for the daemon socket at `~/.agentlog/agentlogd.sock` by default. Override this with:

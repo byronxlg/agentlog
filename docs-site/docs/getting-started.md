@@ -86,6 +86,21 @@ See decisions related to a specific file:
 agentlog blame internal/index/index.go
 ```
 
+## Export decisions
+
+Generate formatted output for PR descriptions, retrospectives, or handoff documents:
+
+```bash
+# PR summary from today's work
+agentlog export --template pr --since 1d
+
+# Full markdown export of the last week
+agentlog export --since 7d
+
+# Export as JSON for scripting
+agentlog export --format json --since 7d
+```
+
 ## Stop the daemon
 
 When you are done:
