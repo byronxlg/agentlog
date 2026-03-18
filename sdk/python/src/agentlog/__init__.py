@@ -23,6 +23,7 @@ __all__ = [
     "query",
     "log",
     "context",
+    "export",
 ]
 
 _default_client: AgentlogClient | None = None
@@ -115,3 +116,23 @@ def context(
     Convenience wrapper around :meth:`AgentlogClient.context`.
     """
     return _get_default_client().context(files=files, topic=topic, limit=limit)
+
+
+def export(
+    session: str | None = None,
+    since: str | None = None,
+    until: str | None = None,
+    file: str | None = None,
+    tag: str | None = None,
+    type: str | None = None,
+    format: str | None = None,
+    template: str | None = None,
+) -> str:
+    """Export entries as a formatted string.
+
+    Convenience wrapper around :meth:`AgentlogClient.export`.
+    """
+    return _get_default_client().export(
+        session=session, since=since, until=until, file=file,
+        tag=tag, type=type, format=format, template=template,
+    )

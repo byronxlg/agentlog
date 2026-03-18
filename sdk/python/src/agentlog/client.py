@@ -376,6 +376,57 @@ class AgentlogClient:
 
         return self._format_context(entries)
 
+    def export(
+        self,
+        session: Optional[str] = None,
+        since: Optional[str] = None,
+        until: Optional[str] = None,
+        file: Optional[str] = None,
+        tag: Optional[str] = None,
+        type: Optional[str] = None,
+        format: Optional[str] = None,
+        template: Optional[str] = None,
+    ) -> str:
+        """Export entries as a formatted string.
+
+        Calls the daemon's ``export`` protocol method. The daemon handles
+        filtering, sorting, and formatting; this method resolves duration
+        strings client-side and passes all other parameters through.
+
+        Args:
+            session: Filter by session ID.
+            since: Only entries after this time (ISO 8601 or duration like '1h', '7d').
+            until: Only entries before this time (ISO 8601 or duration like '1h', '7d').
+            file: Filter by file reference.
+            tag: Filter by tag.
+            type: Filter by entry type.
+            format: Output format: ``markdown`` (default), ``json``, or ``text``.
+            template: Template name: ``pr``, ``retro``, or ``handoff``.
+
+        Returns:
+            Formatted string from the daemon.
+        """
+        params: dict[str, Any] = {}
+        if session is not None:
+            params["session_id"] = session
+        if since is not None:
+            params["since"] = _resolve_time(since)
+        if until is not None:
+            params["until"] = _resolve_time(until)
+        if file is not None:
+            params["file_path"] = file
+        if tag is not None:
+            params["tag"] = tag
+        if type is not None:
+            params["type"] = type
+        if format is not None:
+            params["format"] = format
+        if template is not None:
+            params["template"] = template
+
+        result = self._send("export", params)
+        return result if isinstance(result, str) else ""
+
     # -- internal helpers ---------------------------------------------------
 
     @staticmethod
