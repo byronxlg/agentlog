@@ -24,7 +24,7 @@
       <p class="description">
         Capture agent decisions and reasoning - the missing layer between
         git history and LLM traces. Local-first, framework-agnostic,
-        built for developers.
+        invisible when working. We used it to build itself.
       </p>
       <div class="hero-buttons">
         <a class="btn btn-primary" href="/agentlog/docs/getting-started/">Get Started</a>
@@ -53,7 +53,7 @@
         </div>
         <div class="problem-card">
           <h3>agentlog</h3>
-          <p>Structured decision records with context, reasoning, alternatives, and file associations.</p>
+          <p>Structured decision records with context, reasoning, and file associations. Auto-captured, queryable, and exportable.</p>
         </div>
       </div>
     </section>
@@ -65,6 +65,7 @@
       agentlog runs as a lightweight daemon alongside your development tools.
       Agents (or you) write structured decision entries. Everything is stored
       locally in append-only JSONL files with a SQLite index for fast queries.
+      With Claude Code, decisions are captured automatically - no manual logging needed.
     </p>
     <div class="code-block">
       <pre><span class="c"># Start the daemon</span>
@@ -78,8 +79,8 @@ agentlog write <span class="f">--type</span> decision <span class="f">--title</s
 <span class="c"># Search your decisions</span>
 agentlog query <span class="s">"SQLite"</span>
 
-<span class="c"># See which decisions affected a file</span>
-agentlog blame src/index.ts</pre>
+<span class="c"># Export for a PR summary or retrospective</span>
+agentlog export <span class="f">--template</span> pr <span class="f">--since</span> 1d</pre>
     </div>
   </section>
 
@@ -100,16 +101,16 @@ agentlog blame src/index.ts</pre>
           <p>Works with any AI agent, any language, any workflow. Not tied to a specific LLM provider or development tool.</p>
         </div>
         <div class="feature-card">
-          <h3>Python SDK</h3>
-          <p>Programmatic access from Python. Write decisions, query the log, and integrate with your existing tooling.</p>
+          <h3>Export and templates</h3>
+          <p>Export decisions as markdown, JSON, or text. Built-in templates for PR summaries, retrospectives, and handoff documents.</p>
         </div>
         <div class="feature-card">
-          <h3>TypeScript SDK</h3>
-          <p>First-class TypeScript support. Type-safe client for writing and querying agent decisions.</p>
+          <h3>Python and TypeScript SDKs</h3>
+          <p>Programmatic access from both languages. Write, query, export, and get context for prompts.</p>
         </div>
         <div class="feature-card">
           <h3>Claude Code integration</h3>
-          <p>Automatic decision logging when working with Claude Code. Hooks into agent lifecycle with zero configuration.</p>
+          <p>Automatic decision capture and context injection. Hooks run silently - invisible when working, safe to deploy anywhere.</p>
         </div>
       </div>
     </section>
@@ -121,7 +122,7 @@ agentlog blame src/index.ts</pre>
       <div class="quickstart-step">
         <h3>1. Install</h3>
         <div class="code-block">
-          <pre>go install github.com/byronxlg/agentlog@latest</pre>
+          <pre>brew install byronxlg/agentlog/agentlog</pre>
         </div>
       </div>
       <div class="quickstart-step">

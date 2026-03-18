@@ -10,6 +10,7 @@ Git tells you *what* changed. LLM traces tell you *what was said*. Neither tells
 - **SQLite index** - fast queries by time, type, session, tags, or file
 - **Full-text search** - find decisions by keyword across title and body
 - **File blame** - see which decisions affected a specific file
+- **Export with templates** - output as markdown, JSON, or text with built-in PR, retro, and handoff templates
 - **Session tracking** - group related decisions within a coding session
 - **Single binary** - pure Go, no CGO, no external dependencies
 

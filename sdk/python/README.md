@@ -94,6 +94,27 @@ print(context)
 # Files: internal/auth/jwt.go
 ```
 
+### Exporting entries
+
+```python
+# Export recent decisions as markdown
+output = agentlog.export(since="1d")
+
+# Export as JSON
+output = agentlog.export(format="json", since="7d")
+
+# Generate a PR summary
+output = agentlog.export(template="pr", since="1d")
+
+# Export with filters
+output = agentlog.export(type="decision", tag="infrastructure", since="7d")
+
+# Retrospective for a session
+output = agentlog.export(template="retro", session="your-session-id")
+```
+
+Supported formats: `markdown` (default), `json`, `text`. Templates: `pr`, `retro`, `handoff`.
+
 ### Using the client class directly
 
 ```python
