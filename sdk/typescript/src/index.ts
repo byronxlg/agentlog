@@ -19,6 +19,7 @@ export {
   type QueryOptions,
   type LogOptions,
   type ContextOptions,
+  type ExportOptions,
   type ClientOptions,
   type Entry,
 } from "./types.js";
