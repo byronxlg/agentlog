@@ -90,8 +90,6 @@ Flags:
 | `--limit` | `50` | Maximum entries to display |
 | `--offset` | `0` | Number of entries to skip |
 
-At least one filter is required.
-
 ### query - Full-text search
 
 Use `query` to search across all decision content when you do not know the exact
