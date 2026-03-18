@@ -4,15 +4,15 @@ agentlog captures the decisions and reasoning that happen during agentic coding 
 
 ## Prerequisites
 
-Install agentlog and make sure the binaries are on your PATH:
+Install agentlog and start the daemon:
 
 ```bash
-# Build from source
-git clone https://github.com/byronxlg/agentlog.git
-cd agentlog
-make build
+# Homebrew (recommended)
+brew install byronxlg/agentlog/agentlog
 
-# Add to PATH
+# Or build from source
+git clone https://github.com/byronxlg/agentlog.git
+cd agentlog && make build
 export PATH="$PWD/bin:$PATH"
 ```
 
@@ -31,16 +31,83 @@ agentlog log
 
 ## Integration approaches
 
-There are two ways to integrate agentlog with Claude Code:
+There are three ways to integrate agentlog with Claude Code, from simplest to most hands-on:
 
-1. **CLAUDE.md instructions** - Tell Claude to log decisions via the CLI. Simple, no setup beyond editing a file.
-2. **Hook scripts** - Automatically log decisions using Claude Code's hook system. More powerful, captures decisions without relying on Claude remembering to log them.
+1. **Skill installation (recommended)** - Install the agentlog skill for Claude Code. Provides CLI guidance, usage examples, and self-configures hooks for automatic capture.
+2. **Hook scripts only** - Install just the hooks for automatic decision capture and context injection without the skill's CLI guidance.
+3. **CLAUDE.md instructions** - Tell Claude to log decisions via the CLI manually. No hooks, relies on Claude following instructions.
 
-Both approaches can be used together.
+All three approaches can be combined.
 
-## Approach 1: CLAUDE.md instructions
+## Approach 1: Skill installation (recommended)
 
-Add the following snippet to your project's `CLAUDE.md` file. Claude Code reads this file at the start of every conversation and follows its instructions.
+The agentlog skill gives Claude Code full knowledge of the agentlog CLI and configures hooks automatically. This is the fastest way to get started.
+
+### Install the skill
+
+From the agentlog repo, install the skill into your project:
+
+```bash
+claude install-skill /path/to/agentlog/integrations/claude-code/skill
+```
+
+This installs a skill that teaches Claude Code:
+- All agentlog CLI commands (`write`, `log`, `query`, `show`, `blame`, `context`)
+- The five entry types and when to use each one
+- Common workflows (starting sessions, capturing decisions, reviewing history)
+- How to self-configure hooks for automatic capture
+
+### Configure hooks
+
+After installing the skill, ask Claude to set up the hooks:
+
+```
+Set up agentlog hooks for this project
+```
+
+Claude will check if hooks are already configured, and if not, run the install script or configure them manually. The hooks provide:
+
+- **Context injection** - On the first prompt of each session, queries the daemon for decisions relevant to your current files and injects them as context
+- **Decision capture** - After each Claude Code response, detects newly modified files and logs them as decisions automatically
+
+### Verify the setup
+
+```bash
+# Check hooks are configured
+grep -q "session-start\|decision-write" .claude/settings.json && echo "hooks configured"
+
+# Check the skill is installed
+ls .claude/skills/agentlog/
+```
+
+See [integrations/claude-code/README.md](../integrations/claude-code/README.md) for environment variables, customization, and troubleshooting.
+
+## Approach 2: Hook scripts only
+
+If you want automatic capture and context injection without installing the skill, you can install just the hooks. This is useful when you prefer explicit control over what Claude knows about agentlog.
+
+### Automated setup
+
+Run the install script from your project root:
+
+```bash
+bash /path/to/agentlog/integrations/claude-code/install.sh
+```
+
+This copies both hook scripts to `.claude/hooks/` and configures `.claude/settings.json`. For global installation (all projects), add `--global`.
+
+See [integrations/claude-code/README.md](../integrations/claude-code/README.md) for manual configuration, environment variables, and customization.
+
+### What the hooks provide
+
+- **session-start.sh** (context injection) - Runs on `UserPromptSubmit`. On the first prompt of each session, detects your working files from git state and queries the daemon for relevant past decisions.
+- **decision-write.sh** (automatic capture) - Runs on `Stop`. After each Claude Code response, compares git state against a per-session snapshot to detect newly modified files and logs them as decisions.
+
+Both hooks are silent by default and never interfere with normal Claude Code operation.
+
+## Approach 3: CLAUDE.md instructions
+
+Add the following snippet to your project's `CLAUDE.md` file. Claude Code reads this file at the start of every conversation and follows its instructions. This approach relies on Claude remembering to log decisions rather than capturing them automatically.
 
 ```markdown
 ## Decision logging
@@ -82,45 +149,6 @@ Log decisions with:
 
 See `examples/claude-code-snippet.md` for a complete CLAUDE.md section you can copy into your project.
 
-## Approach 2: Hook scripts
-
-Claude Code supports hooks that run shell commands in response to events. You can use a hook to automatically log tool usage and decisions.
-
-### Setup
-
-1. Copy the hook script to your project:
-
-```bash
-cp examples/hooks/agentlog-hook.sh .claude/hooks/
-chmod +x .claude/hooks/agentlog-hook.sh
-```
-
-2. Configure the hook in your Claude Code settings. Add to `.claude/settings.json`:
-
-```json
-{
-  "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": ".claude/hooks/agentlog-hook.sh"
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-This logs a decision entry every time Claude edits or writes a file, capturing which files were modified and the tool that was used.
-
-### Customizing the hook
-
-The hook script receives tool use context via environment variables. Edit the script to change what gets logged, which tools trigger logging, or what tags are applied.
-
 ## Querying decisions
 
 Once decisions are being logged, you can query them:
@@ -149,7 +177,16 @@ agentlog blame src/index.go
 
 ### Using decisions for context
 
-The real power of agentlog is giving future sessions context about past decisions. Add this to your CLAUDE.md:
+The real power of agentlog is giving future sessions context about past decisions. The `agentlog context` command powers the session-start hook and returns decisions formatted as markdown:
+
+```bash
+agentlog context --files src/index.go --files internal/store.go --limit 10
+agentlog context --topic my-project
+```
+
+SDKs also expose a `context()` method for programmatic access. See [sdk/python/README.md](../sdk/python/README.md) and [sdk/typescript/README.md](../sdk/typescript/README.md) for details.
+
+Add this to your CLAUDE.md to encourage manual context checks:
 
 ```markdown
 ## Before making changes
@@ -162,16 +199,6 @@ This shows past decisions, failed attempts, and assumptions related to the file.
 Use this context to avoid repeating failed approaches or contradicting prior decisions.
 ```
 
-## Python SDK (coming soon)
-
-A Python SDK is in development that provides a programmatic interface to agentlog. This will enable richer integrations, including:
-
-- Structured decision logging from Python scripts
-- Querying decisions programmatically
-- Building custom tools that read and write decision logs
-
-Check the project repository for updates on SDK availability.
-
 ## Troubleshooting
 
 **"daemon is not running"** - Start the daemon with `agentlog start`. Check `~/.agentlog/agentlogd.log` for errors.
@@ -179,3 +206,5 @@ Check the project repository for updates on SDK availability.
 **Decisions not appearing** - Verify the daemon is running (`agentlog log` should not error). Check that the `--type` flag uses a valid value: decision, attempt_failed, deferred, assumption, or question.
 
 **Hook not firing** - Verify the hook script is executable (`chmod +x`). Check that the matcher pattern in settings.json matches the tools you want to capture.
+
+**No context appearing** - Run `AGENTLOG_VERBOSE=1 bash .claude/hooks/session-start.sh` to see verbose output. Check the troubleshooting section in [integrations/claude-code/README.md](../integrations/claude-code/README.md).

@@ -136,22 +136,31 @@ See [sdk/python/README.md](sdk/python/README.md) for the full SDK documentation.
 
 ## Claude Code integration
 
-agentlog ships with two hooks that automate decision logging in Claude Code sessions:
+agentlog integrates with Claude Code through a skill and two hooks that automate decision logging:
 
-- **Context injection** (`session-start.sh`) - On the first prompt of each session, queries the daemon for decisions relevant to your current working set of files and injects them as context
+- **Skill** (`integrations/claude-code/skill/`) - Teaches Claude Code the agentlog CLI, entry types, and common workflows. Self-configures hooks on first use.
+- **Context injection** (`session-start.sh`) - On the first prompt of each session, queries the daemon for decisions relevant to your current files and injects them as context
 - **Decision capture** (`decision-write.sh`) - After each Claude Code response, detects newly modified files and logs them as decisions automatically
 
-### Quick setup
+### Skill installation (recommended)
 
-Run the install script from your project root:
+Install the agentlog skill to give Claude Code full knowledge of the CLI and automatic hook configuration:
+
+```bash
+claude install-skill /path/to/agentlog/integrations/claude-code/skill
+```
+
+Then ask Claude to set up hooks: "Set up agentlog hooks for this project."
+
+### Hook-only setup
+
+To install just the hooks without the skill:
 
 ```bash
 bash integrations/claude-code/install.sh
 ```
 
 This copies the hooks into `.claude/hooks/` and configures `.claude/settings.json`. For global installation (all projects), add `--global`.
-
-### Manual setup
 
 See [integrations/claude-code/README.md](integrations/claude-code/README.md) for manual configuration, environment variables, and troubleshooting.
 
@@ -166,7 +175,7 @@ agentlog context --topic my-project
 
 SDKs also expose a `context()` method for programmatic access.
 
-See [docs/claude-code.md](docs/claude-code.md) for the full integration guide, CLAUDE.md snippets, and examples.
+See [docs/claude-code.md](docs/claude-code.md) for the full integration guide and alternative setup approaches.
 
 ## Export
 
