@@ -791,6 +791,100 @@ test_normal_operation_unchanged() {
     rm -rf "/tmp/agentlog-decisions/${session_id}"*
 }
 
+test_telemetry_counter_increments_across_turns() {
+    local tmpdir mockdir
+    tmpdir="$(make_tmpdir)"
+    mockdir="$(make_tmpdir)"
+    init_git_repo "$tmpdir"
+
+    local argfile="$tmpdir/captured_args.txt"
+    make_mock_agentlog "$mockdir" "$argfile"
+
+    local session_id="test-telemetry-count-$$"
+
+    # First turn - create a file
+    echo "a" > "$tmpdir/file1.txt"
+    output=$(cd "$tmpdir" && CLAUDE_SESSION_ID="$session_id" PATH="$mockdir:/usr/bin:/bin" bash "$HOOK_SCRIPT" 2>&1)
+
+    local count_file="/tmp/agentlog-decisions/${session_id}.count"
+    if [[ -f "$count_file" ]]; then
+        local count
+        count=$(cat "$count_file")
+        if [[ "$count" -eq 1 ]]; then
+            pass "telemetry counter is 1 after first write"
+        else
+            fail "telemetry counter is 1 after first write" "got count: $count"
+        fi
+    else
+        fail "telemetry counter is 1 after first write" "count file not found"
+    fi
+
+    # Second turn - create another file
+    echo "b" > "$tmpdir/file2.txt"
+    rm -f "$argfile"
+    output=$(cd "$tmpdir" && CLAUDE_SESSION_ID="$session_id" PATH="$mockdir:/usr/bin:/bin" bash "$HOOK_SCRIPT" 2>&1)
+
+    if [[ -f "$count_file" ]]; then
+        local count
+        count=$(cat "$count_file")
+        if [[ "$count" -eq 2 ]]; then
+            pass "telemetry counter is 2 after second write"
+        else
+            fail "telemetry counter is 2 after second write" "got count: $count"
+        fi
+    else
+        fail "telemetry counter is 2 after second write" "count file not found"
+    fi
+
+    rm -rf "/tmp/agentlog-decisions/${session_id}"*
+}
+
+test_telemetry_verbose_shows_session_summary() {
+    local tmpdir mockdir
+    tmpdir="$(make_tmpdir)"
+    mockdir="$(make_tmpdir)"
+    init_git_repo "$tmpdir"
+
+    make_mock_agentlog "$mockdir"
+
+    local session_id="test-telemetry-summary-$$"
+    echo "change" > "$tmpdir/base.txt"
+
+    local stderr_output
+    stderr_output=$(cd "$tmpdir" && AGENTLOG_VERBOSE=1 CLAUDE_SESSION_ID="$session_id" PATH="$mockdir:/usr/bin:/bin" bash "$HOOK_SCRIPT" 2>&1 1>/dev/null)
+
+    if echo "$stderr_output" | grep -q 'Session summary: 1 decisions captured'; then
+        pass "verbose shows session summary with count"
+    else
+        fail "verbose shows session summary with count" "stderr was: $stderr_output"
+    fi
+
+    rm -rf "/tmp/agentlog-decisions/${session_id}"*
+}
+
+test_telemetry_counter_not_on_stdout() {
+    local tmpdir mockdir
+    tmpdir="$(make_tmpdir)"
+    mockdir="$(make_tmpdir)"
+    init_git_repo "$tmpdir"
+
+    make_mock_agentlog "$mockdir"
+
+    local session_id="test-telemetry-stdout-$$"
+    echo "change" > "$tmpdir/base.txt"
+
+    local stdout_output
+    stdout_output=$(cd "$tmpdir" && AGENTLOG_VERBOSE=1 CLAUDE_SESSION_ID="$session_id" PATH="$mockdir:/usr/bin:/bin" bash "$HOOK_SCRIPT" 2>/dev/null)
+
+    if [[ -z "$stdout_output" ]]; then
+        pass "telemetry output goes to stderr, not stdout"
+    else
+        fail "telemetry output goes to stderr, not stdout" "got stdout: $stdout_output"
+    fi
+
+    rm -rf "/tmp/agentlog-decisions/${session_id}"*
+}
+
 # -- Run all tests --
 
 printf "=== decision-write.sh tests ===\n\n"
@@ -818,6 +912,9 @@ run_test test_dry_run_skips_agentlog_write
 run_test test_dry_run_produces_no_stdout
 run_test test_verbose_and_dry_run_combined
 run_test test_normal_operation_unchanged
+run_test test_telemetry_counter_increments_across_turns
+run_test test_telemetry_verbose_shows_session_summary
+run_test test_telemetry_counter_not_on_stdout
 
 printf "\n=== Results: %d tests, %d passed, %d failed ===\n" "$TESTS_RUN" "$TESTS_PASSED" "$TESTS_FAILED"
 
